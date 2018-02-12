@@ -1,3 +1,10 @@
+#
+# Copyright 2018 Electric Brain Software Corporation
+#
+# All Rights Reserved.
+#
+
+
 import numpy as np
 import os
 import six.moves.urllib as urllib
