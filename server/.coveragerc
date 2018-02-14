@@ -1,0 +1,3 @@
+[run]
+source = server
+omit = server/test*
