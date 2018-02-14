@@ -7,14 +7,23 @@ import BasePage from './components/Layout/BasePage';
 import BaseHorizontal from './components/Layout/BaseHorizontal';
 
 import SingleView from './components/SingleView/SingleView';
+import Login from './components/Authentication/Login';
+import Callback from './components/Authentication/Callback';
 import SubMenu from './components/SubMenu/SubMenu';
+import Auth from './services/Auth';
+
+// Create the global authentication service
+const auth = new Auth();
 
 // List of routes that uses the page layout
 // listed here to Switch between layouts
 // depending on the current pathname
 const listofPages = [
+    '/login',
     /* See full project for reference */
 ];
+
+
 
 const Routes = ({ location }) => {
     const currentKey = location.pathname.split('/')[1] || '/';
@@ -38,6 +47,7 @@ const Routes = ({ location }) => {
             // Page Layout component wrapper
             <BasePage>
                 <Switch location={location}>
+                    <Route path="/login" render={(props) => <Login auth={auth} {...props} />} />
                     {/* See full project for reference */}
                 </Switch>
             </BasePage>
@@ -52,8 +62,8 @@ const Routes = ({ location }) => {
                 <CSSTransition key={currentKey} timeout={timeout} classNames={animationName}>
                     <div>
                         <Switch location={location}>
-                            <Route path="/singleview" component={SingleView}/>
-                            <Route path="/submenu" component={SubMenu}/>
+                            <Route path="/singleview" render={(props) => <SingleView auth={auth} {...props} />} />
+                            <Route path="/submenu" render={(props) => <SubMenu auth={auth} {...props} />} />
 
                             <Redirect to="/singleview"/>
                         </Switch>

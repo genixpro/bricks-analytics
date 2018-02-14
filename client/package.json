@@ -25,6 +25,7 @@
     "@jh3y/whirl": "github:jh3y/whirl",
     "animate.css": "3.5.2",
     "animo": "github:thrivingkings/animo.js",
+    "auth0-lock": "^11.2.3",
     "blueimp-canvas-to-blob": "3.11.0",
     "blueimp-file-upload": "9.18.0",
     "blueimp-load-image": "2.14.0",
