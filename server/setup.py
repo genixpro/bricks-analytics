@@ -14,6 +14,7 @@ requires = [
     'pyramid_mako',
     'pyramid_debugtoolbar',
     'waitress',
+    'pymongo'
 ]
 
 tests_require = [
@@ -23,7 +24,7 @@ tests_require = [
 ]
 
 setup(
-    name='server',
+    name='ebretail',
     version='0.0',
     description='server',
     long_description=README + '\n\n' + CHANGES,

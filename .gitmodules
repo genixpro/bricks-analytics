@@ -1,0 +1,3 @@
+[submodule "lib/pose-tensorflow"]
+	path = lib/pose-tensorflow
+	url = https://github.com/electricbrainio/pose-tensorflow.git

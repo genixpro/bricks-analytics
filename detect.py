@@ -104,7 +104,7 @@ TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, 'image{}.jpg'.format(
 # Size, in inches, of the output images.
 IMAGE_SIZE = (12, 8)
 
-cap = cv2.VideoCapture(2)
+cap = cv2.VideoCapture(0)
 
 
 
@@ -337,7 +337,6 @@ def showFrame(future):
     image_np = future.result()
     waitingOnFrames.remove(future)
 
-    print('showing')
     resized = scipy.misc.imresize(image_np, 200, interp='bilinear', mode=None)
     cv2.imshow('frame', resized)
     if cv2.waitKey(1) == 27:
