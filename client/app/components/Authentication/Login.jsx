@@ -3,8 +3,11 @@ import { Grid, Row, Col, Panel, Button } from 'react-bootstrap';
 import { Router, Route, Link, History } from 'react-router-dom';
 
 class Login extends React.Component {
-    render() {
+    componentDidMount() {
         this.props.auth.login();
+    }
+
+    render() {
         return (
             <div className="block-center mt-xl wd-xl">
 

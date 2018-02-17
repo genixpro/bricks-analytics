@@ -14,7 +14,8 @@ requires = [
     'pyramid_mako',
     'pyramid_debugtoolbar',
     'waitress',
-    'pymongo'
+    'pymongo',
+    'cornice'
 ]
 
 tests_require = [

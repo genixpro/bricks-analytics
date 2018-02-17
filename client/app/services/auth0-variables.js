@@ -3,5 +3,5 @@
 export const AUTH_CONFIG = {
   domain: 'electricbrain.auth0.com',
   clientId: 'RPeko8N4cd0pJ3UxKMuZrKk47boTLzdB',
-  callbackUrl: 'http://localhost:3000/callback'
-}
+  callbackUrl: 'http://localhost:3000/login/callback'
+};

@@ -12,7 +12,7 @@ class ContentWrapper extends React.Component {
         }
 
         return (
-            <div className="content-wrapper">
+            <div className={"content-wrapper " + this.props.class}>
                 {childElement}
             </div>
         );
