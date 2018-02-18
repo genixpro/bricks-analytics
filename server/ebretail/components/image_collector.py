@@ -7,6 +7,9 @@ import cv2
 import requests
 from PIL import Image
 import io
+import threading
+
+import pika
 
 
 class ImageCollector:
@@ -20,8 +23,60 @@ class ImageCollector:
     def __init__(self):
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=12)
         self.imageProcessorUrl = "http://localhost:1845/process_image"
+        self.registrationUrl = "http://localhost:1806/register_collector"
+        self.amqpUri = "localhost"
+        self.metadata = {
+            "collectorId": "collector-0",
+            "store": 4
+        }
+        self.imageRecordUrl = "http://localhost:1806/store/" + str(self.metadata['store']) + "/cameras/{0}/image"
 
-    def main(self):
+        self.recordNextImage = {}
+
+        self.amqpThread = threading.Thread(target=lambda: self.amqpConnectionThread())
+
+    def connectToAmqp(self):
+        # Open a connection to the message broker
+        self.amqpConnection = pika.BlockingConnection(pika.ConnectionParameters(self.amqpUri))
+        self.amqpChannel = self.amqpConnection.channel()
+        self.amqpChannel.queue_declare(queue=self.metadata['collectorId'])
+
+        for cameraIndex,camera in enumerate(self.cameras):
+            cameraId = self.cameraId(cameraIndex)
+            self.amqpChannel.exchange_declare(exchange=cameraId, exchange_type='fanout')
+            self.amqpChannel.queue_bind(queue=self.metadata['collectorId'], exchange=cameraId)
+
+        self.amqpChannel.basic_consume(
+            lambda ch, method, properties, body: self.handleCameraQueueMessage(ch, method, properties, str(body, 'utf8')),
+            queue=self.metadata['collectorId'],
+            no_ack=True)
+
+    def amqpConnectionThread(self):
+        while True:
+            try:
+                self.connectToAmqp()
+                self.amqpChannel.start_consuming()
+            except pika.exceptions.ConnectionClosed as e:
+                # Do nothing - all other exceptions are allowed to bubble up.
+                # this one is ignored.
+                print(e)
+                pass
+
+
+    def handleCameraQueueMessage(self, ch, method, properties, body):
+        message = json.loads(body)
+        print(message)
+        if message['type'] == 'record-image':
+            self.recordNextImage[message['cameraId']] = True
+
+        # self.amqpChannel.basic_ack(delivery_tag=method.delivery_tag)
+        return True
+
+
+    def cameraId(self, i):
+        return self.metadata['collectorId'] + "-camera-" + str(i)
+
+    def openCameras(self):
         # Try to capture all devices except first, which is
         # laptops onboard camera
 
@@ -37,9 +92,25 @@ class ImageCollector:
                     break
             except Exception:
                 break
+        self.cameras = cameras
+
+    def register(self):
+        """ This function registers this image collector with the main server. """
+        data = {
+            "store": self.metadata['store'],
+            "collectorId": self.metadata['collectorId'],
+            "cameras": [{"id": self.cameraId(i)} for i in range(len(self.cameras))]
+        }
+        r = requests.post(self.registrationUrl, json=data)
+
+
+    def main(self):
+        self.openCameras()
+        self.register()
+        self.amqpThread.start()
 
         # Make sure we have at least one camera
-        if len(cameras) == 0:
+        if len(self.cameras) == 0:
             raise Exception("No cameras available for capture besides first (laptop cam)")
 
         lastFrameTime = datetime.fromtimestamp(time.time() - (time.time() % 0.5))
@@ -54,28 +125,51 @@ class ImageCollector:
                 time.sleep(delayTime)
 
                 # Do a grab for each device
-                for index, camera in enumerate(cameras):
+                for index, camera in enumerate(self.cameras):
                     success = camera.grab()
 
-                for index, camera in enumerate(cameras):
+                for index, camera in enumerate(self.cameras):
+                    cameraId = self.cameraId(index)
                     image = camera.retrieve()[1]
-                    self.executor.submit(lambda i, c: self.uploadImage(i, nextFrameTime, c), image, index)
+                    self.executor.submit(lambda i, c: self.uploadImageToProcessor(i, nextFrameTime, c), image, index)
+
+                    if cameraId in self.recordNextImage and self.recordNextImage[cameraId]:
+                        self.executor.submit(lambda i, c: self.uploadImageToAPI(i, nextFrameTime, c), image, index)
+                        self.recordNextImage[cameraId] = False
 
                 lastFrameTime = nextFrameTime
             except Exception as e:
                 print(e)
 
-    def uploadImage(self, image, timeStamp, cameraIndex):
+
+    def uploadImageToProcessor(self, image, timeStamp, cameraIndex):
         try:
             image = Image.fromarray(image, mode=None)
             b = io.BytesIO()
             image.save(b, "JPEG", quality=80)
             b.seek(0)
             metadata = {
+                "cameraId": self.cameraId(cameraIndex),
                 "timestamp": timeStamp.isoformat(),
                 "cameraIndex": cameraIndex
             }
             r = requests.post(self.imageProcessorUrl, files={'image': b, "metadata": json.dumps(metadata)})
-            print(r)
+        except Exception as e:
+            # print(e)
+            pass
+
+
+    def uploadImageToAPI(self, image, timeStamp, cameraIndex):
+        try:
+            image = Image.fromarray(image, mode=None)
+            b = io.BytesIO()
+            image.save(b, "JPEG", quality=80)
+            b.seek(0)
+            metadata = {
+                "cameraId": self.cameraId(cameraIndex),
+                "timestamp": timeStamp.isoformat(),
+                "cameraIndex": cameraIndex
+            }
+            r = requests.post(self.imageRecordUrl.format(self.cameraId(cameraIndex)), files={'image': b, "metadata": json.dumps(metadata)})
         except Exception as e:
             print(e)

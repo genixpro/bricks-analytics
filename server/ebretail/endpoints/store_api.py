@@ -5,6 +5,7 @@ from pyramid.view import view_config
 from pyramid.security import Allow
 from pyramid.security import Everyone
 from ebretail.models.counter import get_next_object_id
+import gridfs
 
 
 
@@ -44,3 +45,36 @@ class Store(object):
         self.storesCollection.insert(store)
 
         return True
+
+@resource(path='/store/{id}/store_layout', cors_origins=('*',), cors_max_age=3600, renderer='file')
+class StoreLayout(object):
+    def __init__(self, request, context=None):
+        self.request = request
+
+        self.storeLayouts = gridfs.GridFS(request.registry.db, collection='storeLayout')
+
+    def __acl__(self):
+        return [(Allow, Everyone, 'everything')]
+
+
+    def get(self):
+        id = int(self.request.matchdict['id'])
+        layout = self.storeLayouts.get(id)
+
+        if layout is None:
+            return None
+        else:
+            return layout
+
+    def put(self):
+        layout = self.request.body
+
+        id = int(self.request.matchdict['id'])
+        if self.storeLayouts.exists(id):
+            self.storeLayouts.delete(id)
+
+        metadata = {"_id": id}
+
+        self.storeLayouts.put(layout, **metadata)
+
+        return None

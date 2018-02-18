@@ -39,6 +39,7 @@
 @import "app/user-block";
 @import "app/dropdown-extra";
 @import "app/animate";
+@import "app/radial-bar";
 
 // Utilities 
 @import "app/utils";
@@ -50,3 +51,4 @@
 // Stores page
 @import "stores/NewStore";
 @import "stores/FindStore";
+@import "stores/ViewStore";

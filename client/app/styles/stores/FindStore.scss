@@ -3,4 +3,8 @@
   .storeRow {
     cursor: pointer;
   }
+  .storeRow:hover
+  {
+    background-color: #ccc;
+  }
 }

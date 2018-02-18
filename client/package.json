@@ -101,6 +101,7 @@
     "select2-bootstrap-theme": "0.1.0-beta.10",
     "simple-line-icons": "2.4.1",
     "spinkit": "1.2.5",
+    "stompjs": "^2.3.3",
     "sweetalert": "1.1.3",
     "underscore": "^1.8.3",
     "weather-icons": "github:erikflowers/weather-icons",

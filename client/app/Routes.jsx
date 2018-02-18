@@ -9,15 +9,33 @@ import Dashboard from './components/Dashboard/Dashboard';
 import NewStore from './components/Stores/NewStore';
 import FindStore from './components/Stores/FindStore';
 import ViewStore from './components/Stores/ViewStore';
+import StoreDetails from './components/Stores/StoreDetails';
+import StoreImageProcessors from './components/Stores/StoreImageProcessors';
+import StoreCameras from './components/Stores/StoreCameras';
 import Login from './components/Authentication/Login';
 import AuthCallback from './components/Authentication/AuthCallback';
 import SubMenu from './components/SubMenu/SubMenu';
 import Auth from './services/Auth';
 import _ from 'underscore';
+import {Stomp} from "stompjs/lib/stomp.min";
 
 
 // Create the global authentication service
 const auth = new Auth();
+
+// Create the global websocket service for realtime messaging
+let ws = new WebSocket('ws://localhost:15674/ws');
+let messagingClient =  Stomp.over(ws);
+
+const onError = () => {
+    // Just keep reconnecting after 1 second timeout
+    setTimeout(() =>
+    {
+        messagingClient.connect("guest", "guest", () => {}, onError);
+    }, 1000);
+};
+
+messagingClient.connect("guest", "guest", () => {}, onError);
 
 // List of routes that uses the page layout
 // listed here to Switch between layouts
@@ -34,11 +52,16 @@ class PrivateRoute extends React.Component {
         const SubComponent = this.props['component'];
         const newProps = _.omit(this.props, 'component');
 
+        const additionalProps = {
+            auth: auth,
+            messagingClient: messagingClient
+        };
+
         const v = (<Route
             {...newProps}
             render={props =>
                 auth.isAuthenticated() ? (
-                    <SubComponent {...props} />
+                    <SubComponent {...props} {...additionalProps}>{this.props.children}</SubComponent>
                 ) : (
                     <Redirect
                         to={{
@@ -91,12 +114,12 @@ const Routes = ({location}) => {
                     <CSSTransition key={currentKey} timeout={timeout} classNames={animationName}>
                         <div>
                             <Switch location={location}>
-                                <PrivateRoute path="/singleview" component={Dashboard}/>} />
-                                <PrivateRoute path="/submenu" component={SubMenu}/>} />
-                                <PrivateRoute path="/new-store" component={NewStore}/>} />
-                                <PrivateRoute path="/find-store" component={FindStore}/>} />
-                                <PrivateRoute path="/store/:id" component={ViewStore}/>} />
-
+                                <PrivateRoute path="/singleview" component={Dashboard} />
+                                <PrivateRoute path="/submenu" component={SubMenu} />
+                                <PrivateRoute path="/new-store" component={NewStore} />
+                                <PrivateRoute path="/find-store" component={FindStore} />
+                                <PrivateRoute path="/store/:storeId" component={ViewStore}>
+                                </PrivateRoute>
                                 <Redirect to="/singleview"/>
                             </Switch>
                         </div>
