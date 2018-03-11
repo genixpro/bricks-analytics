@@ -2,8 +2,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
-
-from wsgiref.simple_server import make_server
+import waitress
 from ebretail import image_processor_microservice
 from pyramid.paster import (
     get_appsettings,
@@ -25,7 +24,4 @@ if __name__ == '__main__':
     setup_logging(config_uri)
     settings = get_appsettings(config_uri)
 
-    server = make_server('0.0.0.0', 1845, image_processor_microservice(None, **settings))
-    print("Serving on port 1845: http://localhost:1845/")
-    server.serve_forever()
-
+    waitress.serve(image_processor_microservice(None, **settings), host='localhost', port=1845)

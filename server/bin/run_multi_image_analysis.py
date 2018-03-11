@@ -2,9 +2,10 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
-from ebretail.components.multi_image_analyzer import ImageAnalyzer
+from ebretail.components.multi_image_analyzer import MultiImageAnalyzer
 import pymongo
-from wsgiref.simple_server import make_server
+import pika
+import pika.exceptions
 from pyramid.paster import (
     get_appsettings,
     setup_logging,
@@ -27,7 +28,17 @@ if __name__ == '__main__':
 
     db = pymongo.MongoClient(settings['mongo.uri'])['ebretail']
 
-    analyzer = ImageAnalyzer(db)
+    # Open a connection to the message broker
+    amqpConnection = pika.BlockingConnection(pika.ConnectionParameters(settings['amqp.uri']))
+    def getMessagingChannel():
+        global amqpConnection
+        try:
+            return amqpConnection.channel()
+        except pika.exceptions.ConnectionClosed:
+            amqpConnection = pika.BlockingConnection(pika.ConnectionParameters(settings['amqp.uri']))
+            return getMessagingChannel()
+
+    analyzer = MultiImageAnalyzer(db, getMessagingChannel)
     analyzer.main()
 
 

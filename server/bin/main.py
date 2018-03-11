@@ -3,7 +3,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
 
-from wsgiref.simple_server import make_server
+import waitress
 from ebretail import main_api
 from pyramid.paster import (
     get_appsettings,
@@ -25,7 +25,5 @@ if __name__ == '__main__':
     setup_logging(config_uri)
     settings = get_appsettings(config_uri)
 
-    server = make_server('0.0.0.0', 1806, main_api(None, **settings))
-    print("Serving on port 1806: http://localhost:1806/")
-    server.serve_forever()
+    waitress.serve(main_api(None, **settings), host='localhost', port=1806)
 

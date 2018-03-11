@@ -15,11 +15,21 @@ export default class Auth {
                 params: {
                     scope: 'openid'
                 }
+            },
+            theme: {
+                logo: '/img/logo-auth0.png'
             }
         });
 
         // Set the default url - todo, this needs to be moved somewhere else
         axios.defaults.baseURL = 'http://localhost:1806/';
+
+        // For development builds, we add 150ms onto response times so that it doesn't appear unnaturally instant
+        axios.interceptors.response.use(function (response) {
+            return new Promise((resolve, reject) => setTimeout(resolve.bind(null, response), 250));
+        }, function (error) {
+            return new Promise((resolve, reject) => setTimeout(reject.bind(null, error), 250));
+        });
 
         this.handleAuthentication();
 

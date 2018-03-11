@@ -33,6 +33,13 @@ class Store(object):
         else:
             return store
 
+    def post(self):
+        data = self.request.json_body
+
+        self.storesCollection.update_one({"_id": int(self.request.matchdict['id'])}, {"$set": data})
+
+        return None
+
     def collection_post(self):
         store = self.request.json_body
 

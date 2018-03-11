@@ -16,8 +16,26 @@ class StoreDetails extends React.Component {
         this.state = {isUploading: false, storeLayoutCacheBreaker: ""};
     }
 
-    componentDidMount() {
+    componentDidMount()
+    {
+        var headers = {durable: false, "auto-delete": false, exclusive: false};
+        this.storeSubscription = this.props.messagingClient.subscribe("/exchange/store-frames-" + this.props.store._id, (message) =>
+        {
+            const body = JSON.parse(message.body);
+            this.setState({frame: body});
+        }, headers);
+    }
 
+
+    /**
+     * Triggered when this component is being removed from the screen
+     */
+    componentWillUnmount()
+    {
+        if (this.storeSubscription)
+        {
+            this.storeSubscription.unsubscribe();
+        }
     }
 
 
@@ -53,6 +71,9 @@ class StoreDetails extends React.Component {
 
     render() {
 
+        const personImageOffsetX = 32;
+        const personImageOffsetY = 32;
+
         return (
             <div>
                 <br/>
@@ -62,7 +83,20 @@ class StoreDetails extends React.Component {
                             <h2>Store Map</h2>
                             <div className="storeMap" onClick={this.uploadNewStoreMap.bind(this)}>
                                 <i className="fa fa-upload" />
-                                <img src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout?" + this.state.storeLayoutCacheBreaker} />
+                                <img className='store-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout?" + this.state.storeLayoutCacheBreaker} />
+
+                                {this.state.frame &&
+                                    this.state.frame.people.map((person) =>
+                                        <img className="person-location"
+                                             src='/img/person.png'
+                                             style={{
+                                                 "left": person[1][0] - personImageOffsetX + 300,
+                                                 "top": person[1][1] - personImageOffsetY + 300
+                                             }}
+                                        />
+                                    )
+                                }
+
                                 <div className="overlay"></div>
 
                                 {this.state.showProgress && <div data-label={this.state.progress} className="radial-bar radial-bar-1 radial-bar-lg"></div>}

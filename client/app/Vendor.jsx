@@ -27,4 +27,6 @@ import '../node_modules/underscore/underscore-min.js';
 // React Table
 import '../node_modules/react-table/react-table.css'
 import '../node_modules/react-table/react-table.js'
-
+// CSS Loaders
+import '../node_modules/loaders.css/loaders.css';
+import '../node_modules/spinkit/css/spinkit.css';

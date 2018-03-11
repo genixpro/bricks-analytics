@@ -33,7 +33,8 @@ def record(request):
 
 
 @resource(path='/store/{storeId}/cameras/{cameraId}/image', cors_origins=('*',), cors_max_age=3600, renderer='file')
-class CameraImage(object):
+class CameraCurrentImage(object):
+    """This RESTful endpoint is used for storing and retrieving the current image of the camera."""
     def __init__(self, request, context=None):
         self.request = request
 
@@ -72,10 +73,47 @@ class CameraImage(object):
 
         message = {
             "type": "image-updated",
-            "cameraId": self.request.matchdict['cameraId']
+            "cameraId": cameraId
         }
 
         amqpChannel = self.request.registry.getMessagingChannel()
-        amqpChannel.basic_publish(exchange=self.request.matchdict['cameraId'], routing_key='', body=json.dumps(message))
+        amqpChannel.basic_publish(exchange=cameraId, routing_key='', body=json.dumps(message))
 
         return None
+
+
+@resource(path='/store/{storeId}/cameras/{cameraId}/frame/{frameNumber}', cors_origins=('*',), cors_max_age=3600, renderer='bson')
+class CameraFrames(object):
+    """
+        This RESTful endpoint is used for retrieving the processed data for specific frames of this camera.
+    """
+    def __init__(self, request, context=None):
+        self.request = request
+
+        self.processedImages = request.registry.db.processedImages
+
+    def __acl__(self):
+        return [(Allow, Everyone, 'everything')]
+
+
+    def get(self):
+        storeId = int(self.request.matchdict['storeId'])
+        cameraId = self.request.matchdict['cameraId']
+
+        query = {
+            "metadata.storeId": storeId,
+            "metadata.cameraId": cameraId,
+        }
+        sort = []
+
+        if self.request.matchdict['frameNumber'] == 'current':
+            sort.append(('frameNumber', -1))
+        else:
+            query['frameNumber'] = int(self.request.matchdict['frameNumber'])
+
+        image = self.processedImages.find_one(query, sort=sort)
+
+        if image is None:
+            return None
+        else:
+            return image

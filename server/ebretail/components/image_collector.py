@@ -8,6 +8,7 @@ import requests
 from PIL import Image
 import io
 import threading
+import traceback
 
 import pika
 
@@ -27,11 +28,13 @@ class ImageCollector:
         self.amqpUri = "localhost"
         self.metadata = {
             "collectorId": "collector-0",
-            "store": 4
+            "storeId": 4
         }
-        self.imageRecordUrl = "http://localhost:1806/store/" + str(self.metadata['store']) + "/cameras/{0}/image"
 
         self.recordNextImage = {}
+
+        self.collectionFrequency = 100
+        self.uploadTimeout = 5
 
         self.amqpThread = threading.Thread(target=lambda: self.amqpConnectionThread())
 
@@ -80,24 +83,25 @@ class ImageCollector:
         # Try to capture all devices except first, which is
         # laptops onboard camera
 
-        index = 0
+        index = 1
         cameras = []
         while True:
             try:
                 camera = cv2.VideoCapture(index)
+                # camera.set(cv2.CAP_PROP_FPS, 4)
                 if camera is not None and camera.isOpened():
                     cameras.append(camera)
                     index += 1
                 else:
                     break
-            except Exception:
-                break
+            except Exception as e:
+                print(traceback.format_exc())
         self.cameras = cameras
 
     def register(self):
         """ This function registers this image collector with the main server. """
         data = {
-            "store": self.metadata['store'],
+            "store": self.metadata['storeId'],
             "collectorId": self.metadata['collectorId'],
             "cameras": [{"id": self.cameraId(i)} for i in range(len(self.cameras))]
         }
@@ -119,7 +123,7 @@ class ImageCollector:
         while True:
             try:
                 # Delay until the next frame time
-                nextFrameTime = lastFrameTime + timedelta(milliseconds=500)
+                nextFrameTime = lastFrameTime + timedelta(milliseconds=self.collectionFrequency)
                 delayTime = max(0, (nextFrameTime - datetime.now()).total_seconds())
 
                 time.sleep(delayTime)
@@ -131,45 +135,34 @@ class ImageCollector:
                 for index, camera in enumerate(self.cameras):
                     cameraId = self.cameraId(index)
                     image = camera.retrieve()[1]
-                    self.executor.submit(lambda i, c: self.uploadImageToProcessor(i, nextFrameTime, c), image, index)
 
+                    record = False
                     if cameraId in self.recordNextImage and self.recordNextImage[cameraId]:
-                        self.executor.submit(lambda i, c: self.uploadImageToAPI(i, nextFrameTime, c), image, index)
+                        record = True
                         self.recordNextImage[cameraId] = False
+
+                    self.executor.submit(lambda i, c: self.uploadImageToProcessor(i, nextFrameTime, c, record=record), image.copy(), index)
 
                 lastFrameTime = nextFrameTime
             except Exception as e:
                 print(e)
 
 
-    def uploadImageToProcessor(self, image, timeStamp, cameraIndex):
+    def uploadImageToProcessor(self, image, timeStamp, cameraIndex, record):
         try:
             image = Image.fromarray(image, mode=None)
             b = io.BytesIO()
             image.save(b, "JPEG", quality=80)
             b.seek(0)
             metadata = {
+                "storeId": self.metadata['storeId'],
                 "cameraId": self.cameraId(cameraIndex),
-                "timestamp": timeStamp.isoformat(),
-                "cameraIndex": cameraIndex
+                "timestamp": timeStamp.strftime("%Y-%m-%dT%H:%M:%S.%f"),
+                "cameraIndex": cameraIndex,
+                "record": record
             }
-            r = requests.post(self.imageProcessorUrl, files={'image': b, "metadata": json.dumps(metadata)})
+            r = requests.post(self.imageProcessorUrl, files={'image': b, "metadata": json.dumps(metadata)}, timeout=self.uploadTimeout)
+            print("Successfully uploaded " + metadata['timestamp'])
         except Exception as e:
-            # print(e)
+            print("Failed to upload " + timeStamp.strftime("%Y-%m-%dT%H:%M:%S.%f") + ": " + str(e))
             pass
-
-
-    def uploadImageToAPI(self, image, timeStamp, cameraIndex):
-        try:
-            image = Image.fromarray(image, mode=None)
-            b = io.BytesIO()
-            image.save(b, "JPEG", quality=80)
-            b.seek(0)
-            metadata = {
-                "cameraId": self.cameraId(cameraIndex),
-                "timestamp": timeStamp.isoformat(),
-                "cameraIndex": cameraIndex
-            }
-            r = requests.post(self.imageRecordUrl.format(self.cameraId(cameraIndex)), files={'image': b, "metadata": json.dumps(metadata)})
-        except Exception as e:
-            print(e)

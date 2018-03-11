@@ -18,7 +18,14 @@ class ViewStore extends React.Component {
     constructor(props) {
         super(props);
 
-        this.state = {store: {}, isUploading: false, storeLayoutCacheBreaker: ""};
+        this.state = {
+            store: {}, 
+            isUploadingStoreLayout: false, 
+            storeLayoutCacheBreaker: "",
+            isUpdatingStore: false,
+            showUpdateFailure: false,
+            showUpdateSuccess: false
+        };
     }
 
     componentDidMount() {
@@ -56,6 +63,37 @@ class ViewStore extends React.Component {
     }
 
 
+    updateStore(newStore)
+    {
+        this.setState({
+            store: newStore,
+            isUpdatingStore: true
+        });
+
+        return axios({
+            method: 'post',
+            url: '/store/' + this.props.match.params.storeId,
+            data: newStore
+        }).then(() =>
+        {
+            this.setState({
+                isUpdatingStore: false,
+                showUpdateSuccess: true
+            });
+
+            setTimeout(() => this.setState({showUpdateSuccess: false}), 5000);
+        }, () =>
+        {
+            this.setState({
+                isUpdatingStore: false,
+                showUpdateFailure: true
+            });
+
+            setTimeout(() => this.setState({showUpdateFailure: false}), 5000);
+        });
+    }
+
+
     render() {
         const cameraColumns = [{
             Header: 'ID',
@@ -86,10 +124,10 @@ class ViewStore extends React.Component {
                         {
                             this.state.store._id &&
                              <div>
-                                 <Route path="/store/:storeId/details" component={withProps(_.extend({}, this.props, {store: this.state.store}))(StoreDetails)} />
-                                 <Route path="/store/:storeId/image_processors" component={withProps(_.extend({}, this.props, {store: this.state.store}))(StoreImageProcessors)} />
-                                 <Route path="/store/:storeId/cameras" component={withProps(_.extend({}, this.props, {store: this.state.store}))(StoreCameras)} />
-                                 <Route path="/store/:storeId/camera/:cameraId" component={withProps(_.extend({}, this.props, {store: this.state.store}))(StoreCameras)} />
+                                 <Route path="/store/:storeId/details" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this)}))(StoreDetails)} />
+                                 <Route path="/store/:storeId/image_processors" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this)}))(StoreImageProcessors)} />
+                                 <Route path="/store/:storeId/cameras" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this)}))(StoreCameras)} />
+                                 <Route path="/store/:storeId/camera/:cameraId" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this)}))(StoreCameras)} />
                              </div>
                         }
                         { /* END panel */ }

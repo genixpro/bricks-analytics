@@ -27,5 +27,9 @@ module.exports = webpackMerge(commonConfig, {
         stats: 'minimal',
         inline: true,
         hot: true
+    },
+    watchOptions: {
+        aggregateTimeout: 300,
+        poll: 1000
     }
 });

@@ -1,0 +1,48 @@
+
+- Setup = 1h
+    - Copy in a template for server code
+    - Copy in a template for client code
+    - Create licenses folder, start tracking licenses for models imported
+
+
+- Camera recording script
+    - Synchronized frame recording = 2h
+    - Auto restart / service deployment = 1h
+
+
+- Video Processor script
+    - Local queueing / batching mechanism = 3h
+    - Object detection = 1h
+    - Pose Estimation = 1h
+    - Facial recognition = 5h
+    - Calibration object detection = 1h
+    - API posting = 4h
+    - Auto-restart / service deployment = 1h
+
+
+- Real-time tracking / analytics module
+    - Streaming data from database, execute when all data for frame has been assembled, or after time out period for disabled cameras = 4h
+    - Smoothing, noise reduction on incoming data = 8h
+    - Location estimation = 6h
+    - Object tracking across cameras = 12h
+    - Mapping into store coordinates = 2h
+    - Zone classification = 1h
+    - Recalibration = 2h
+
+
+Product:
+    - Authentication & token management = 8h
+    - Learning ReactJS = 20h
+    - Whole-store dashboard
+        - Live store map, with where people are located = 6h
+    - "Visit" view containing face, heatmap, active zones, products purchased, etc.. = 3d
+    - Printout of 'analysis' sheet = 4h
+    - Ability to trigger recalibration = 4h
+
+
+MVP:
+    - Permissions & account management
+    - Store management
+    - Camera management
+    - Visitor historical data
+    - Billing

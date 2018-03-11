@@ -8,7 +8,7 @@
     position: relative;
     cursor: pointer;
 
-    img {
+    img.store-image {
       width: 100%;
     }
 
@@ -29,6 +29,10 @@
       top: 0;
       right: 0;
       bottom: 0;
+    }
+
+    .person-location {
+      position: absolute;
     }
   }
 

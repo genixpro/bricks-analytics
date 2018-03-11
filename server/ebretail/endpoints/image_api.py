@@ -65,9 +65,13 @@ def collect_images(request):
         image['frameNumber'] = frameNumber
         imageCollection.insert(image)
 
-        frameCollection.find_one_and_update({'frameNumber': frameNumber}, {'$set': {
+        frameCollection.find_one_and_update({
             'frameNumber': frameNumber,
-            'timeStamp': image['timeStamp'],
+            'storeId': image['metadata']['storeId']
+        }, {'$set': {
+            'frameNumber': frameNumber,
+            'storeId': image['metadata']['storeId'],
+            'timeStamp': image['metadata']['timestamp'],
             'needsUpdate': True
         }}, upsert=True)
 

@@ -48,7 +48,8 @@ setup(
     install_requires=requires,
     entry_points={
         'paste.app_factory': [
-            'main = server:main',
+            'main_api=ebretail:main_api',
+            'image_processor_microservice=ebretail:image_processor_microservice',
         ],
     },
 )
