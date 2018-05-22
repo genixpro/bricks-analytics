@@ -97,14 +97,14 @@ class MultiImageAnalyzer:
         people = []
 
         for image in images:
-            cameraId = image['metadata']['cameraId']
+            cameraId = image['cameraId']
 
             cameraInfo = None
             for camera in store['cameras']:
                 if camera['id'] == cameraId:
                     cameraInfo = camera
                     break
-            
+
             if 'rotationVector' in cameraInfo and 'translationVector' in cameraInfo:
                 rotationMatrix = cv2.Rodrigues(np.array(cameraInfo['rotationVector']))[0]
                     

@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "SingleCameraFrame": {
+      "title": "SingleCameraFrame",
+      "description": "This object contains all of the metadata extracted from processing a single image from a single camera through the deep-learning and computer-vision algorithms. This object is produced in a mini-datacenter which is deployed on-site.",
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "number"
+        },
+        "cameraId": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "people": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "keypoints": {
+                "type": "object",
+                "properties": {
+                  "left_ear": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "left_eye": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "nose": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "right_ear": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "right_eye": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "left_shoulder": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "right_shoulder": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "left_elbow": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "right_elbow": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "left_hand": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "right_hand": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "left_hip": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "right_hip": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "left_knee": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "right_knee": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "left_foot": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  },
+                  "right_foot": {
+                    "$ref": "Coordinate.json#/definitions/Coordinate"
+                  }
+                }
+              },
+              "bounding_box": {
+                "$ref": "Box.json#/definitions/Box"
+              }
+            }
+          }
+        },
+        "calibrationObjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "points": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$ref": "#/definitions/SingleCameraFrame"
+}

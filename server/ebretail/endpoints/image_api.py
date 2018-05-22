@@ -46,7 +46,6 @@ def register_collector(request):
 
 
 
-
 @view_config(route_name='collect_images')
 def collect_images(request):
     """
@@ -60,20 +59,21 @@ def collect_images(request):
     imageCollection = request.registry.db.processedImages
     frameCollection = request.registry.db.frames
 
-    for image in request.json_body['images']:
-        frameNumber = int(datetime.strptime(image['metadata']['timestamp'], "%Y-%m-%dT%H:%M:%S.%f").timestamp() * 2)
-        image['frameNumber'] = frameNumber
-        imageCollection.insert(image)
+    data = request.json_body
 
-        frameCollection.find_one_and_update({
-            'frameNumber': frameNumber,
-            'storeId': image['metadata']['storeId']
-        }, {'$set': {
-            'frameNumber': frameNumber,
-            'storeId': image['metadata']['storeId'],
-            'timeStamp': image['metadata']['timestamp'],
-            'needsUpdate': True
-        }}, upsert=True)
+    frameNumber = int(datetime.strptime(data['timestamp'], "%Y-%m-%dT%H:%M:%S.%f").timestamp() * 2)
+    data['frameNumber'] = frameNumber
+    imageCollection.insert(data)
+
+    frameCollection.find_one_and_update({
+        'frameNumber': frameNumber,
+        'storeId': data['storeId']
+    }, {'$set': {
+        'frameNumber': frameNumber,
+        'storeId': data['storeId'],
+        'timeStamp': data['timestamp'],
+        'needsUpdate': True
+    }}, upsert=True)
 
     return Response('OK')
 

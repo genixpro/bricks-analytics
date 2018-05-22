@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "MultiCameraFrame": {
+      "title": "MultiCameraFrame",
+      "description": "This object represents the result of processing multiple SingleCameraFrame objects together with their SingleCameraConfiguration objects. It consists of a single set of person locations as located on the StoreMap",
+      "type": "object",
+      "properties": {
+        "people": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$ref": "#/definitions/MultiCameraFrame"
+}

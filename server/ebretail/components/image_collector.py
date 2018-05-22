@@ -9,6 +9,8 @@ from PIL import Image
 import io
 import threading
 import traceback
+import imageio
+import numpy
 
 import pika
 
@@ -33,7 +35,7 @@ class ImageCollector:
 
         self.recordNextImage = {}
 
-        self.collectionFrequency = 100
+        self.collectionFrequency = 500
         self.uploadTimeout = 5
 
         self.amqpThread = threading.Thread(target=lambda: self.amqpConnectionThread())
@@ -128,13 +130,9 @@ class ImageCollector:
 
                 time.sleep(delayTime)
 
-                # Do a grab for each device
-                for index, camera in enumerate(self.cameras):
-                    success = camera.grab()
-
-                for index, camera in enumerate(self.cameras):
+                # Grab all the images
+                for index, image in enumerate(self.captureImages()):
                     cameraId = self.cameraId(index)
-                    image = camera.retrieve()[1]
 
                     record = False
                     if cameraId in self.recordNextImage and self.recordNextImage[cameraId]:
@@ -166,3 +164,107 @@ class ImageCollector:
         except Exception as e:
             print("Failed to upload " + timeStamp.strftime("%Y-%m-%dT%H:%M:%S.%f") + ": " + str(e))
             pass
+
+    def captureImages(self):
+        images = []
+
+        for index, camera in enumerate(self.cameras):
+            success = camera.grab()
+
+        for index, camera in enumerate(self.cameras):
+            cameraId = self.cameraId(index)
+            image = camera.retrieve()[1]
+
+            images.append(image)
+
+        return images
+
+    def captureDatasetMain(self):
+        self.openCameras()
+        # self.register()
+        self.amqpThread.start()
+
+        self.cameras = self.cameras[:-1]
+
+        frameNumber = 0
+
+        # Make sure we have at least one camera
+        if len(self.cameras) == 0:
+            raise Exception("No cameras available for capture besides first (laptop cam)")
+
+        lastFrameTime = datetime.fromtimestamp(time.time() - (time.time() % 0.5))
+
+        # Start grabbing frames and forwarding them with their time stamp
+        while True:
+            try:
+                # Delay until the next frame time
+                nextFrameTime = lastFrameTime + timedelta(milliseconds=self.collectionFrequency)
+                delayTime = max(0, (nextFrameTime - datetime.now()).total_seconds())
+
+                time.sleep(delayTime)
+
+                frameNumber += 1
+
+                self.captureSingleDatasetImage(str(frameNumber).zfill(5))
+
+                lastFrameTime = nextFrameTime
+            except Exception as e:
+                raise e
+
+    def captureSingleDatasetImageMain(self):
+        self.openCameras()
+        # self.register()
+        self.amqpThread.start()
+
+        self.cameras = self.cameras[:-1]
+
+        lastFrameTime = datetime.fromtimestamp(time.time() - (time.time() % 0.5))
+
+        try:
+            # Capture 50 photos, letting the webcams normalize
+            for i in range(50):
+                self.captureImages()
+                time.sleep(0.05)
+
+            self.captureSingleDatasetImage(lastFrameTime)
+            print("finished!")
+        except Exception as e:
+            raise e
+
+
+    def captureSingleDatasetImage(self, frameName):
+        maxWidth = 0
+        maxHeight = 0
+        for index, image in enumerate(self.captureImages()):
+            cameraImage = Image.fromarray(image)
+
+            maxWidth += cameraImage.size[0]
+            maxHeight = max(maxHeight, cameraImage.size[1])
+
+        newImage = Image.new('RGB', (maxWidth, maxHeight))
+        x_offset = 0
+
+        # Do a grab for each device
+        for index, image in enumerate(self.captureImages()):
+            cameraId = self.cameraId(index)
+
+            cameraImage = Image.fromarray(image)
+
+            newImage.paste(cameraImage, (x_offset, 0))
+            x_offset += cameraImage.size[0]
+
+        array = numpy.array(newImage.convert("RGB"))
+        for x in range(maxWidth):
+            for y in range(maxHeight):
+                pixel = array[y][x]
+
+                r = pixel[2]
+                g = pixel[1]
+                b = pixel[0]
+
+                pixel[0] = r
+                pixel[1] = g
+                pixel[2] = b
+
+
+        imageio.imsave('image-' + str(frameName) + '.jpg', array)

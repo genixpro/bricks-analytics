@@ -21,6 +21,7 @@ import requests
 from pyramid.response import Response
 from PIL import Image
 from pyramid.view import view_config
+from ebretail.models.validate import validateSingleCameraFrame
 
 from config import load_config
 from dataset.factory import create as create_dataset
@@ -57,11 +58,84 @@ class ImageAnalyzer:
         self.poseSess, self.poseInputs, self.poseOutputs = predict.setup_pose_prediction(self.cfg)
 
         # How frequent does the person detector run
-        self.personDetectorFrequency = 3
+        self.personDetectorFrequency = 1
         self.detectorTrackerMaxDistance = 50
         self.trackerBoxWidth = 30
         self.trackerBoxHeight = 30
         self.trackerMaxAverageDist = 50
+
+        # We need to double check all of the indexes - some of these might not actually be correlated with the correct body parts
+        self.keypointNames = [
+            'left_ear',
+            'left_eye',
+            'nose',
+            'right_eye',
+            'right_ear',
+            'left_shoulder',
+            'right_shoulder',
+            'left_elbow',
+            'right_elbow',
+            'left_hand',
+            'right_hand',
+            'left_hip',
+            'right_hip',
+            'left_knee',
+            'right_knee',
+            'left_foot',
+            'right_foot'
+        ]
+
+    def processSingleCameraImage(self, image, metadata, state, debugImage):
+        """
+            This method is used to process a single image from a single camera. It produces a SingleCameraFrame object.
+
+            :param image: A numpy array representing the image.
+            :param metadata: A python dictionary containing storeId, cameraId, and timestamp metadata objects.
+            :param state: A state object, representing carryover state from the previous processed image.
+            :param debugImage: A numpy array, representing a clone of the image, to which debug information can be written to.
+            :return: A tuple (singleCameraFrame, state) representing the resulting SingleCameraFrame object, and state to be carried over to the next image.
+        """
+
+        peopleState = state.get('peopleState', None)
+        calibrationDetectionState = state.get('calibrationDetectionState', None)
+
+        try:
+            # Use the global image analyzer to do all the general purpose detections
+            people, peopleState, debugImage = self.detectPeople(image, peopleState, debugImage)
+            calibrationObject, calibrationDetectionState, debugImage = self.detectCalibrationObject(image, calibrationDetectionState, debugImage)
+        except Exception as e:
+            # Reset the state if something went wrong.
+            peopleState = None
+            calibrationDetectionState = None
+            raise  # Reraise the exception
+        finally:
+            state['timestamp'] = metadata['timestamp']
+            state['peopleState'] = peopleState
+            state['calibrationDetectionState'] = calibrationDetectionState
+
+        # cv2.imshow('frame', debugImage)
+        # cv2.waitKey(1)
+
+        singleCameraFrame = {
+            "storeId": metadata['storeId'],
+            "cameraId": metadata['cameraId'],
+            "timestamp": metadata['timestamp'],
+            "people": people,
+            "calibrationObject": calibrationObject
+        }
+
+        validateSingleCameraFrame(singleCameraFrame)
+
+        return (singleCameraFrame, state)
+
+
+    def processMultipleCameraFrames(self):
+        """This function takes multiple camera frames,"""
+
+
+        pass
+
+
 
     def boundingBoxForPerson(self, keypoints):
         epsilon = 1e-6
@@ -70,7 +144,35 @@ class ImageAnalyzer:
         right = max(point[0] for point in keypoints if point[0] != 0 or point[1] != 0) + epsilon
         bottom = max(point[1] for point in keypoints if point[0] != 0 or point[1] != 0) + epsilon
 
-        return [left, top, right, bottom]
+        return {
+            "left": left,
+            "top": top,
+            "right": right,
+            "bottom": bottom,
+            "width": right-left,
+            "height": bottom-top
+        }
+
+    def getKeypointsObject(self, keypointsArray):
+        data = {}
+        for index,keypoint in enumerate(self.keypointNames):
+            data[keypoint] = {
+                "x": keypointsArray[index][0],
+                "y": keypointsArray[index][1]
+            }
+
+        return data
+
+
+    def getKeypointsArray(self, keypointsObject):
+        data = []
+        for index,keypoint in enumerate(self.keypointNames):
+            data.append([
+                keypointsObject[keypoint]['x'],
+                keypointsObject[keypoint]['y']
+            ])
+
+        return data
 
 
     def detectPeople(self, image, state, debugImage):
@@ -120,17 +222,16 @@ class ImageAnalyzer:
             detectionBoxes = []
             for detectedPersonIndex, detectedPerson in enumerate(peoplePoints):
                 # Compute this persons outer bounding box
-                left, top, right, bottom = self.boundingBoxForPerson(detectedPerson)
+                box = self.boundingBoxForPerson(detectedPerson)
 
                 detectedPointCount = 0
                 for point in detectedPerson:
                     if point[0] != 0 or point[1] != 0:
                         detectedPointCount += 1
 
-                detection = [left, top, right, bottom, detectedPointCount / 17.0]  # the last entry is the score, which is the number of keypoints detected
+                detection = [box['left'], box['top'], box['right'], box['bottom'], detectedPointCount / 17.0]  # the last entry is the score, which is the number of keypoints detected
 
                 detectionBoxes.append(detection)
-
 
             for box in detectionBoxes:
                 cv2.rectangle(debugImage, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (0, 0, 255), 3)
@@ -176,7 +277,8 @@ class ImageAnalyzer:
                 if bestMatch is not None:
                     personData = {
                         'id': box[4],
-                        'keypoints': bestMatch
+                        'keypoints': self.getKeypointsObject(bestMatch),
+                        "bounding_box": self.boundingBoxForPerson(bestMatch)
                     }
                     newPeople.append(personData)
 
@@ -185,11 +287,11 @@ class ImageAnalyzer:
             self.draw_multi.draw(debugImage, self.dataset, peoplePoints)
         else:
             for person in currentPeople:
-                box = self.boundingBoxForPerson(person['keypoints'])
-                cv2.rectangle(debugImage, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (0, 255, 0), 3)
+                box = person['bounding_box']
+                cv2.rectangle(debugImage, (int(box['left']), int(box['top'])), (int(box['right']), int(box['bottom'])), (0, 255, 0), 3)
 
-                textX = int(box[0]) + 10
-                textY = int(box[1]) + 35
+                textX = int(box['left']) + 10
+                textY = int(box['top']) + 35
 
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 cv2.putText(debugImage, str(int(person['id'])), (textX, textY), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
@@ -198,9 +300,9 @@ class ImageAnalyzer:
             if len(currentPeople) == 0:
                 peoplePoints = np.reshape(np.array([]), newshape=[0, 2])
             else:
-                peoplePoints = np.reshape(np.array([[person['keypoints'] for person in currentPeople]]), newshape=[len(currentPeople), 17, 2])
-            self.draw_multi.draw(debugImage, self.dataset, peoplePoints)
+                peoplePoints = np.reshape(np.array([[self.getKeypointsArray(person['keypoints']) for person in currentPeople]]), newshape=[len(currentPeople), 17, 2])
 
+            self.draw_multi.draw(debugImage, self.dataset, peoplePoints)
 
         state['people'] = currentPeople
         state['frameIndex'] = frameIndex
@@ -208,7 +310,7 @@ class ImageAnalyzer:
         for person in currentPeople:
             print("Person: ", person['id'])
 
-        return peoplePoints.tolist(), state, debugImage
+        return currentPeople, state, debugImage
 
 
     def detectCalibrationObject(self, image, state, debugImage):

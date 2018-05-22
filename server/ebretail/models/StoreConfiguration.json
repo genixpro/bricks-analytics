@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "StoreConfiguration": {
+      "title": "StoreConfiguration",
+      "description": "This object contains the configuration information for an entire store.",
+      "type": "object",
+      "properties": {
+
+        "cameras": {
+          "type": "array",
+          "items": {
+            "$ref": "SingleCameraConfiguration.json#/definitions/SingleCameraConfiguration"
+          }
+        }
+
+      }
+    }
+  },
+  "$ref": "#/definitions/StoreConfiguration"
+}
+

@@ -15,7 +15,8 @@ requires = [
     'pyramid_debugtoolbar',
     'waitress',
     'pymongo',
-    'cornice'
+    'cornice',
+    'jsonschema'
 ]
 
 tests_require = [

@@ -26,6 +26,8 @@ globalState = {}
 globalLocks = {}
 globalLocksLock = threading.Lock()
 
+# cv2.namedWindow('frame', flags=cv2.WINDOW_NORMAL)
+
 @view_config(route_name='process_image')
 def processImage(request):
     """
@@ -87,37 +89,13 @@ def processImage(request):
             # TODO: We need better handling for these out-of-order images, since this reduces
             # TODO: quality of the tracking, wastes bandwidth, etc..
             if currentTimestamp is None or timestamp > currentTimestamp:
-                peopleState = currentState.get('peopleState', None)
-                calibrationDetectionState = currentState.get('calibrationDetectionState', None)
-
-                try:
-                    # Use the global image analyzer to do all the general purpose detections
-                    people, peopleState, debugImage = imageAnalyzer.detectPeople(image, peopleState, debugImage)
-                    calibrationObject, calibrationDetectionState, debugImage = imageAnalyzer.detectCalibrationObject(image, calibrationDetectionState, debugImage)
-                except Exception as e:
-                    # Reset the state if something went wrong.
-                    peopleState = None
-                    calibrationDetectionState = None
-                    raise # Reraise the exception
-                finally:
-                    currentState['timestamp'] = timestamp
-                    currentState['peopleState'] = peopleState
-                    currentState['calibrationDetectionState'] = calibrationDetectionState
-                    globalState[metadata['cameraId']] = currentState
-
-                cv2.imshow('frame', debugImage)
-                cv2.waitKey(1)
+                data, newState = imageAnalyzer.processSingleCameraImage(image, currentState, debugImage)
+                globalState[metadata['cameraId']] = newState
 
                 # Forward the results onwards to the main server cluster
-                r = requests.post(mainServerURL, json={
-                    "images": [{
-                        "people": people,
-                        "calibrationObject": calibrationObject,
-                        "metadata": metadata
-                    }]
-                })
+                r = requests.post(mainServerURL, json=data)
 
-                # If recording is enabled, save the debug imamge
+                # If recording is enabled, save the debug image
                 if metadata['record']:
                     recordMetadata = {
                         "storeId": metadata['storeId'],
