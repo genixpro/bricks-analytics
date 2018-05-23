@@ -6,6 +6,18 @@
       "description": "This object contains all of the calibration and configuration information for a camera inside a store.",
       "type": "object",
       "properties": {
+        "storeId": {
+          "type": "number"
+        },
+        "cameraId": {
+          "type": "string"
+        },
+        "calibrationReferencePoint": {
+          "type": "object",
+          "properties": {
+            "$ref": "Coordinate.json#/definitions/Coordinate"
+          }
+        },
         "cameraMatrix": {
           "type": "array",
           "items": {

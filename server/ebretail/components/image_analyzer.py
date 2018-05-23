@@ -129,13 +129,74 @@ class ImageAnalyzer:
         return (singleCameraFrame, state)
 
 
-    def processMultipleCameraFrames(self):
-        """This function takes multiple camera frames,"""
+    def inverseScreenLocation(self, location, height, rotationMatrix, translationVector, cameraMatrix):
+        # Add in another dimension
+        location = np.array([[location[0]], [location[1]], [1]])
 
+        calibrationPointsSize = 10  # Our calibration checkboard consists of 10cm squares
 
-        pass
+        # print(rotationMatrix)
+        # print(cameraMatrix)
 
+        tempMatrix = np.matmul(np.matmul(scipy.linalg.inv(rotationMatrix), scipy.linalg.inv(cameraMatrix)),
+                               location)
+        tempMatrix2 = np.matmul(scipy.linalg.inv(rotationMatrix), translationVector)
 
+        s = (height / calibrationPointsSize + tempMatrix2[2][0]) / tempMatrix[2][0]
+
+        final = np.matmul(scipy.linalg.inv(rotationMatrix),
+                          (s * np.matmul(scipy.linalg.inv(cameraMatrix), location) - translationVector))
+
+        return final
+
+    def processMultipleCameraFrames(self, singleCameraFrames, singleCameraConfigurations):
+        """
+            This function takes multiple SingleCameraFrame objects, along with the associated SingleCameraConfiguration object for each camera,
+            and produces a single MultiCameraFrame object, indicating where it thinks all the people are."""
+
+        multiCameraFrame = {
+            "people": []
+        }
+
+        for frame in singleCameraFrames:
+            cameraId = frame['cameraId']
+
+            cameraInfo = None
+            for camera in singleCameraConfigurations:
+                if camera['cameraId'] == cameraId:
+                    cameraInfo = camera
+                    break
+
+            if 'rotationVector' in cameraInfo and 'translationVector' in cameraInfo:
+                rotationMatrix = cv2.Rodrigues(np.array(cameraInfo['rotationVector']))[0]
+
+                for index, person in enumerate(frame['people']):
+                    feet = []
+                    if person['keypoints']['left_foot']['x'] != 0:
+                        feet.append(list(person['keypoints']['left_foot'].values()))
+                    if person['keypoints']['right_foot']['y'] != 0:
+                        feet.append(list(person['keypoints']['right_foot'].values()))
+
+                    if len(feet) > 0:
+                        screenLocation = np.mean(np.array(feet), axis=0)
+
+                        height = 10.0  # 10cm, approximate height of shin off the ground, which is where the
+                        storeLocation = self.inverseScreenLocation(screenLocation, height, rotationMatrix,
+                                                                   np.array(cameraInfo['translationVector']),
+                                                                   np.array(cameraInfo['cameraMatrix']))
+
+                        storeLocation[0][0] -= cameraInfo['calibrationReferencePoint']['x']
+                        storeLocation[1][0] -= cameraInfo['calibrationReferencePoint']['y']
+
+                        multiCameraFrame['people'].append({
+                            "x": math.fabs(storeLocation[0][0]),
+                            "y": math.fabs(storeLocation[1][0])
+                        })
+
+                        if index == 0:
+                            print('person ' + str(index) + ': x:', storeLocation[0][0], 'y:', storeLocation[1][0])
+
+        return multiCameraFrame
 
     def boundingBoxForPerson(self, keypoints):
         epsilon = 1e-6

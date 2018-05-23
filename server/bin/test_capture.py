@@ -10,6 +10,7 @@ from PIL import Image
 import numpy
 import cv2
 import time
+import datetime
 
 def usage(argv):
     cmd = os.path.basename(argv[0])
@@ -35,11 +36,10 @@ if __name__ == '__main__':
     if len(sys.argv) != 2:
         usage(sys.argv)
 
-    imageAnalyzer = ImageAnalyzer.sharedInstance()
-
     data = json.load(open(sys.argv[1], 'r'))
-
-    annotations = json.load(os.path.join(os.path.dirname(sys.argv[1]), data['annotationsFile']))
+    
+    # Load the annotation data
+    annotations = json.load(open(os.path.join(os.path.dirname(sys.argv[1]), data['annotationsFile']), 'r'))
 
     states = {}
     for camera in data['cameras']:
@@ -50,21 +50,38 @@ if __name__ == '__main__':
     fullCalibrationImage = Image.open(calibrationImagePath)
     calibrationImages = breakApartImage(fullCalibrationImage, data['cameras'])
 
-    # Detect the calibration object for each camera
-    for index, cameraImage in enumerate(calibrationImages):
-        camera = data['cameras'][index]
+    annotationWidthAdjust = fullCalibrationImage.width / annotations['frames']["0"][0]["width"]
+    annotationHeightAdjust = fullCalibrationImage.height / annotations['frames']["0"][0]["height"]
+
+    # Create the image analyzer instance.
+    imageAnalyzer = ImageAnalyzer.sharedInstance()
+
+    # Detect the calibration object for each camera, and generate its configuration object
+    singleCameraConfigurations = []
+    for cameraIndex, cameraImage in enumerate(calibrationImages):
+        camera = data['cameras'][cameraIndex]
         debugImage = cameraImage.copy()
         currentState = states[camera['name']]
 
         calibrationDetectionState = {}
         calibrationObject, calibrationDetectionState, debugImage = imageAnalyzer.detectCalibrationObject(cameraImage, calibrationDetectionState, debugImage)
 
-        pprint(calibrationObject)
-        currentState['calibrationDetectionState'] = calibrationDetectionState
-
+        cameraConfiguration = {
+            "storeId": 1,
+            "cameraId": "test-camera-" + str(cameraIndex),
+            "calibrationReferencePoint": {
+                "x": annotations["frames"]["0"][0]["x1"] * annotationWidthAdjust - data['storeMap']['x'], # TODO: Technically this isn't correct, as it could be any one of x1, y1, x2, y2 depending on the angle of the camera.
+                "y": annotations["frames"]["0"][0]["y1"] * annotationHeightAdjust - data['storeMap']['y']
+            },
+            "cameraMatrix": calibrationObject["cameraMatrix"],
+            "rotationVector": calibrationObject["rotationVector"],
+            "translationVector": calibrationObject["translationVector"]
+        }
+        singleCameraConfigurations.append(cameraConfiguration)
 
     # Process each of the main sequence images
-    results = []
+    resultDebugImages = []
+    multiCameraFrames = []
     for i in range(data['numberOfImages']):
         imagePath = os.path.join(os.path.dirname(sys.argv[1]), data['directory'], 'image-' + str(i).zfill(5) + '.jpg')
 
@@ -75,40 +92,69 @@ if __name__ == '__main__':
 
         debugImages = []
 
+        now = datetime.datetime.now()
+
+        singleCameraFrames = []
+
         # Now process each image
-        for index, cameraImage in enumerate(cameraImages):
-            camera = data['cameras'][index]
+        for cameraIndex, cameraImage in enumerate(cameraImages):
+            camera = data['cameras'][cameraIndex]
 
             # pprint(states)
 
             currentState = states[camera['name']]
 
-            peopleState = currentState.get('peopleState', None)
-            calibrationDetectionState = currentState['calibrationDetectionState']
-
             # Copy for the debug image
             debugImage = cameraImage.copy()
 
-            try:
-                # Use the global image analyzer to do all the general purpose detections
-                people, peopleState, debugImage = imageAnalyzer.detectPeople(cameraImage, peopleState, debugImage)
-            except Exception as e:
-                # Reset the state if something went wrong.
-                peopleState = None
-                raise  # Reraise the exception
-            finally:
-                currentState['peopleState'] = peopleState
-                states[camera['name']] = currentState
+            metadata = {
+                'storeId': 1,
+                'cameraId': 'test-camera-' + str(cameraIndex),
+                'timestamp': (now + datetime.timedelta(seconds=0.5)).strftime("%Y-%m-%dT%H:%M:%S.%f")
+            }
+
+            # Use the image analyzer to produce the SingleCameraFrame object for this camera image.
+            # This first step mostly just detects people and detects the calibration object.
+            singleCameraFrame, newState = imageAnalyzer.processSingleCameraImage(cameraImage, metadata, currentState, debugImage)
+
+            states[camera['name']] = newState
+
+            singleCameraFrames.append(singleCameraFrame)
 
             debugImages.append(debugImage)
 
-        results.append(debugImages)
+        # Now we merge them all together to produce a multi-camera-frame, and add that to the list.
+        multiCameraFrame = imageAnalyzer.processMultipleCameraFrames(singleCameraFrames, singleCameraConfigurations)
+        multiCameraFrames.append(multiCameraFrame)
+
+        resultDebugImages.append(debugImages)
+
+    # Now render the results onto a store-map
+    storeMapImagePath = os.path.join(os.path.dirname(sys.argv[1]), 'storemap.png')
+    storeMapImage = Image.open(storeMapImagePath)
+    storeMapImage.load()
+    storeMapImageArray = numpy.array(storeMapImage.getdata(), numpy.uint8).reshape(storeMapImage.height, storeMapImage.width, 4)
+    storeMapImageArray = cv2.cvtColor(storeMapImageArray, cv2.COLOR_RGBA2BGR)
+
+    for multiCameraFrameIndex, multiCameraFrame in enumerate(multiCameraFrames):
+        frameMap = storeMapImageArray.copy()
+
+        for personIndex, person in enumerate(multiCameraFrame['people']):
+            cv2.rectangle(frameMap, (int(person['x']-25), int(person['y']-25)), (int(person['x']+25), int(person['y']+25)), (0, 255, 0), 3)
+
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(frameMap, str(personIndex), (int(person['x']), int(person['y'])), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
+
+        resultDebugImages[multiCameraFrameIndex].append(frameMap)
 
     for i in range(data['numberOfImages']):
-        debugImages = results[i]
-        for index, debugImage in enumerate(debugImages):
-            camera = data['cameras'][index]
-            cv2.imshow(camera['name'], debugImage)
+        debugImages = resultDebugImages[i]
+        for imageIndex, debugImage in enumerate(debugImages):
+            if imageIndex < (len(debugImages)-1):
+                frameName = data['cameras'][imageIndex]['name']
+            else:
+                frameName = 'Store Map'
+            cv2.imshow(frameName, debugImage)
             cv2.waitKey(1)
         time.sleep(0.5)
 
