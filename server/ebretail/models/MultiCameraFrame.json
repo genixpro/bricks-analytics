@@ -11,6 +11,10 @@
           "items": {
             "type": "object",
             "properties": {
+              "detectionIds": {
+                "type": "array",
+                "items": {"type":"stirng"}
+              },
               "x": {
                 "type": "number"
               },

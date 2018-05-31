@@ -20,6 +20,7 @@
           "items": {
             "type": "object",
             "properties": {
+              "detectionId": {"type": "string"},
               "keypoints": {
                 "type": "object",
                 "properties": {

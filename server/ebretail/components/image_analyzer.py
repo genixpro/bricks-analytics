@@ -102,6 +102,10 @@ class ImageAnalyzer:
         try:
             # Use the global image analyzer to do all the general purpose detections
             people, peopleState, debugImage = self.detectPeople(image, peopleState, debugImage)
+
+            for person in people:
+                person['detectionId'] = metadata['cameraId'] + "-" + str(person['detectionId'])
+
             calibrationObject, calibrationDetectionState, debugImage = self.detectCalibrationObject(image, calibrationDetectionState, debugImage)
         except Exception as e:
             # Reset the state if something went wrong.
@@ -243,7 +247,7 @@ class ImageAnalyzer:
                                                                    )
                         return storeLocation
 
-                    # Build up a list of estimatated screen locations, using approximated heights
+                    # Build up a list of estimated screen locations, using approximated heights
 
                     estimates = []
                     if (len(feet) > 0):
@@ -261,9 +265,6 @@ class ImageAnalyzer:
                     if (len(head) > 0):
                         estimates.append((1, getStoreLocation(group=head, height=165)))# 165cm eye level
 
-                    pprint("estimates")
-                    pprint(estimates)
-
                     if len(estimates) > 0:
                         # Now we create a weighted average of the various estimates, giving more weight
                         # to estimates for body parts close to the ground (so there is less uncertainty)
@@ -279,11 +280,48 @@ class ImageAnalyzer:
 
                         multiCameraFrame['people'].append({
                             "x": x,
-                            "y": y
+                            "y": y,
+                            "detectionIds": [person['detectionId']]
                         })
 
-                        if index == 0:
-                            print('person ' + str(index) + ': x:', x, 'y:', y)
+        # Crude algorithm - merge together any detections which are < 50 px from each other
+        # TODO: Replace this crude algorithm
+        mergeDistance = 100
+        personIndex1 = 0
+        while personIndex1 < len(multiCameraFrame['people']):
+            mergePerson = None
+            mergePersonIndex = None
+            personIndex2 = 0
+            while personIndex2 < len(multiCameraFrame['people']):
+                if personIndex1 != personIndex2:
+                    person1 = multiCameraFrame['people'][personIndex1]
+                    person2 = multiCameraFrame['people'][personIndex2]
+
+                    dist = scipy.spatial.distance.euclidean(
+                        [person1['x'], person1['y']],
+                        [person2['x'], person2['y']]
+                    )
+
+                    if dist < mergeDistance:
+                        mergePersonIndex = personIndex2
+                        mergePerson = person2
+                        break
+
+                personIndex2 += 1
+
+            if mergePerson:
+                person1 = multiCameraFrame['people'][personIndex1]
+
+                person1['x'] = person1['x'] / 2 + mergePerson['x'] / 2
+                person1['y'] = person1['y'] / 2 + mergePerson['y'] / 2
+
+                person1['detectionIds'] = person1['detectionIds'] + mergePerson['detectionIds']
+
+                del multiCameraFrame['people'][mergePersonIndex]
+            else:
+                personIndex1 += 1
+
+        pprint(multiCameraFrame)
 
         return multiCameraFrame
 
@@ -426,7 +464,7 @@ class ImageAnalyzer:
                         bestDistance = distance
                 if bestMatch is not None:
                     personData = {
-                        'id': box[4],
+                        'detectionId': box[4],
                         'keypoints': self.getKeypointsObject(bestMatch),
                         "bounding_box": self.boundingBoxForPerson(bestMatch)
                     }
@@ -458,7 +496,7 @@ class ImageAnalyzer:
         state['frameIndex'] = frameIndex
 
         for person in currentPeople:
-            print("Person: ", person['id'])
+            print("Person: ", person['detectionId'])
 
         return currentPeople, state, debugImage
 

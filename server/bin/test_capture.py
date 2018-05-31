@@ -35,12 +35,17 @@ def drawDebugStoreMap(storeMap, points):
     frameMap = storeMap.copy()
 
     for pointIndex, point in enumerate(points):
-        cv2.rectangle(frameMap, (int(point['x'] - 25), int(point['y'] - 25)),
-                      (int(point['x'] + 25), int(point['y'] + 25)), (0, 255, 0), 3)
+        ids = [pointIndex]
+        if 'detectionIds' in point:
+            ids = point['detectionIds']
 
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(frameMap, str(pointIndex), (int(point['x']), int(point['y'])), font, 1, (0, 255, 0), 2,
-                    cv2.LINE_AA)
+        cv2.rectangle(frameMap, (int(point['x'] - 25), int(point['y'] - 20)),
+                      (int(point['x'] + 25), int(point['y'] + 20)), (0, 255, 0), 3)
+
+        for index, id in enumerate(ids):
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(frameMap, str(id), (int(point['x']), int(point['y'] + index*15)), font, 0.5, (0, 255, 0), 2,
+                        cv2.LINE_AA)
 
     return frameMap
 
@@ -200,6 +205,6 @@ if __name__ == '__main__':
                 frameName = 'Store Map'
             cv2.imshow(frameName, debugImage)
             cv2.waitKey(10)
-        time.sleep(0.5)
+        time.sleep(5.0)
 
 
