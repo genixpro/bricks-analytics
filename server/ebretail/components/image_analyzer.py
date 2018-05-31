@@ -129,23 +129,47 @@ class ImageAnalyzer:
         return (singleCameraFrame, state)
 
 
-    def inverseScreenLocation(self, location, height, rotationMatrix, translationVector, cameraMatrix):
+    def inverseScreenLocation(self, location, height, rotationVector, translationVector, cameraMatrix, calibrationReference):
+        rotationMatrix = cv2.Rodrigues(np.array(rotationVector))[0]
+
         # Add in another dimension
         location = np.array([[location[0]], [location[1]], [1]])
 
-        calibrationPointsSize = 10  # Our calibration checkboard consists of 10cm squares
+        calibrationPointsSize = 10 # Our calibration checkboard consists of 10cm squares
 
-        # print(rotationMatrix)
-        # print(cameraMatrix)
+        tempMatrix = np.matmul(np.matmul(scipy.linalg.inv(rotationMatrix), scipy.linalg.inv(cameraMatrix)), location)
 
-        tempMatrix = np.matmul(np.matmul(scipy.linalg.inv(rotationMatrix), scipy.linalg.inv(cameraMatrix)),
-                               location)
         tempMatrix2 = np.matmul(scipy.linalg.inv(rotationMatrix), translationVector)
 
-        s = (height / calibrationPointsSize + tempMatrix2[2][0]) / tempMatrix[2][0]
+        s = (-height) / calibrationPointsSize + tempMatrix2[2][0]
+
+        s /= tempMatrix[2][0]
 
         final = np.matmul(scipy.linalg.inv(rotationMatrix),
                           (s * np.matmul(scipy.linalg.inv(cameraMatrix), location) - translationVector))
+
+        # Now we need to rotate the coordinates based on the direction of the camera
+        if calibrationReference['direction'] == 'east':
+            x = final[0][0]
+            y = final[1][0]
+            final[0][0] = -y
+            final[1][0] = x
+        elif calibrationReference['direction'] == 'west':
+            x = final[0][0]
+            y = final[1][0]
+            final[0][0] = y
+            final[1][0] = -x
+        elif calibrationReference['direction'] == 'south':
+            x = final[0][0]
+            y = final[1][0]
+            final[0][0] = -x
+            final[1][0] = -y
+
+        final[0][0] *= calibrationReference['unitWidth']
+        final[1][0] *= calibrationReference['unitHeight']
+
+        final[0][0] += calibrationReference['x']
+        final[1][0] += calibrationReference['y']
 
         return final
 
@@ -172,29 +196,94 @@ class ImageAnalyzer:
 
                 for index, person in enumerate(frame['people']):
                     feet = []
+                    knees = []
+                    hips = []
+                    shoulders = []
+                    head = []
                     if person['keypoints']['left_foot']['x'] != 0:
                         feet.append(list(person['keypoints']['left_foot'].values()))
                     if person['keypoints']['right_foot']['y'] != 0:
                         feet.append(list(person['keypoints']['right_foot'].values()))
 
-                    if len(feet) > 0:
-                        screenLocation = np.mean(np.array(feet), axis=0)
+                    if person['keypoints']['left_knee']['x'] != 0:
+                        knees.append(list(person['keypoints']['left_knee'].values()))
+                    if person['keypoints']['right_knee']['y'] != 0:
+                        knees.append(list(person['keypoints']['right_knee'].values()))
 
-                        height = 10.0  # 10cm, approximate height of shin off the ground, which is where the
-                        storeLocation = self.inverseScreenLocation(screenLocation, height, rotationMatrix,
+                    if person['keypoints']['left_hip']['x'] != 0:
+                        hips.append(list(person['keypoints']['left_hip'].values()))
+                    if person['keypoints']['right_hip']['y'] != 0:
+                        hips.append(list(person['keypoints']['right_hip'].values()))
+
+                    if person['keypoints']['left_shoulder']['x'] != 0:
+                        shoulders.append(list(person['keypoints']['left_shoulder'].values()))
+                    if person['keypoints']['right_shoulder']['y'] != 0:
+                        shoulders.append(list(person['keypoints']['right_shoulder'].values()))
+
+                    if person['keypoints']['left_ear']['x'] != 0:
+                        head.append(list(person['keypoints']['left_ear'].values()))
+                    if person['keypoints']['right_ear']['y'] != 0:
+                        head.append(list(person['keypoints']['right_ear'].values()))
+                    if person['keypoints']['left_eye']['x'] != 0:
+                        head.append(list(person['keypoints']['left_eye'].values()))
+                    if person['keypoints']['right_eye']['y'] != 0:
+                        head.append(list(person['keypoints']['right_eye'].values()))
+                    if person['keypoints']['nose']['y'] != 0:
+                        head.append(list(person['keypoints']['nose'].values()))
+
+                    def getStoreLocation(group, height):
+                        screenLocation = np.mean(np.array(group), axis=0)
+
+                        storeLocation = self.inverseScreenLocation(screenLocation,
+                                                                   height,
+                                                                   np.array(cameraInfo['rotationVector']),
                                                                    np.array(cameraInfo['translationVector']),
-                                                                   np.array(cameraInfo['cameraMatrix']))
+                                                                   np.array(cameraInfo['cameraMatrix']),
+                                                                   cameraInfo['calibrationReferencePoint']
+                                                                   )
+                        return storeLocation
 
-                        storeLocation[0][0] -= cameraInfo['calibrationReferencePoint']['x']
-                        storeLocation[1][0] -= cameraInfo['calibrationReferencePoint']['y']
+                    # Build up a list of estimatated screen locations, using approximated heights
+
+                    estimates = []
+                    if (len(feet) > 0):
+                        estimates.append((10, getStoreLocation(group=feet, height=10)))# 10cm, approximate height of shin off the ground, which is where the
+
+                    if (len(knees) > 0):
+                        estimates.append((5, getStoreLocation(group=knees, height=50)))# 50cm, approx where knees are
+
+                    if (len(hips) > 0):
+                        estimates.append((3, getStoreLocation(group=hips, height=80)))# 80cm where hips are
+
+                    if (len(shoulders) > 0):
+                        estimates.append((1, getStoreLocation(group=shoulders, height=150)))# 150cm where shoulders are
+
+                    if (len(head) > 0):
+                        estimates.append((1, getStoreLocation(group=head, height=165)))# 165cm eye level
+
+                    pprint("estimates")
+                    pprint(estimates)
+
+                    if len(estimates) > 0:
+                        # Now we create a weighted average of the various estimates, giving more weight
+                        # to estimates for body parts close to the ground (so there is less uncertainty)
+                        totalWeight = 0
+                        for estimate in estimates:
+                            totalWeight += estimate[0]
+
+                        x = 0
+                        y = 0
+                        for estimate in estimates:
+                            x += estimate[1][0][0] * (estimate[0] / totalWeight)
+                            y += estimate[1][1][0] * (estimate[0] / totalWeight)
 
                         multiCameraFrame['people'].append({
-                            "x": math.fabs(storeLocation[0][0]),
-                            "y": math.fabs(storeLocation[1][0])
+                            "x": x,
+                            "y": y
                         })
 
                         if index == 0:
-                            print('person ' + str(index) + ': x:', storeLocation[0][0], 'y:', storeLocation[1][0])
+                            print('person ' + str(index) + ': x:', x, 'y:', y)
 
         return multiCameraFrame
 
@@ -254,7 +343,7 @@ class ImageAnalyzer:
 
         # Create the tracker if it doesn't exist
         if 'tracker' not in state:
-            state['tracker'] = Sort(max_age=10, min_hits=3.0)
+            state['tracker'] = Sort(max_age=10, min_hits=1.0)
 
         tracker = state['tracker']
 
@@ -399,7 +488,7 @@ class ImageAnalyzer:
         found, corners = cv2.findChessboardCorners(image=gray_image, patternSize=chessBoardSize, flags=flags)
 
         if found:
-            cameraMatrix = np.array([[320.0, 0.0, 320.0], [0.0, 240.0, 240.0], [0.0, 0.0, 1.0]])
+            cameraMatrix = np.array([[640.0, 0.0, 640.0], [0.0, 480.0, 480.0], [0.0, 0.0, 1.0]])
             cameraDistortionCoefficients = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
             cameraRotationVector = None
             cameraTranslationVector = None
@@ -413,6 +502,7 @@ class ImageAnalyzer:
                 "cameraMatrix": cameraMatrix.tolist(),
                 "rotationVector": cameraRotationVector.tolist(),
                 "translationVector": cameraTranslationVector.tolist(),
+                "distortionCoefficients": cameraDistortionCoefficients.tolist()
             }, state, debugImage)
         else:
             return (None, state, debugImage)
