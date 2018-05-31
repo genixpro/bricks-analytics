@@ -2,11 +2,12 @@ import React from 'react';
 import MapComponent from '../Common/maps-google';
 import ContentWrapper from '../Layout/ContentWrapper';
 import LinkedStateMixin from 'react-addons-linked-state-mixin';
-import { Grid, Row, Col, Panel, Button, FormControl, FormGroup, InputGroup, DropdownButton, MenuItem, Tab, Tabs, Nav, NavItem } from 'react-bootstrap';
+import { Grid, Popover, Row, Col, Panel, Button, FormControl, FormGroup, InputGroup, DropdownButton, MenuItem, Tab, Tabs, Nav, NavItem } from 'react-bootstrap';
 import { withGoogleMap, GoogleMap, Marker } from "react-google-maps"
 import axios from 'axios';
 import {withRouter} from "react-router-dom";
 import ReactTable from 'react-table'
+import ZoneEditor from './ZoneEditor';
 
 
 class StoreDetails extends React.Component {
@@ -101,6 +102,13 @@ class StoreDetails extends React.Component {
 
                                 {this.state.showProgress && <div data-label={this.state.progress} className="radial-bar radial-bar-1 radial-bar-lg"></div>}
                             </div>
+                        </Col>
+                    </Row>
+                    <Row>
+                        <Col xs={12}>
+                            <h2>Zones</h2>
+
+                            <ZoneEditor src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout?" + this.state.storeLayoutCacheBreaker}/>
                         </Col>
                     </Row>
                 </Panel>

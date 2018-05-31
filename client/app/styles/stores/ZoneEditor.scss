@@ -1,0 +1,44 @@
+
+.zone-editor
+{
+  max-width: 100%;
+  position: relative;
+
+  img {
+    max-width: 100%;
+
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+
+    pointer-events: none;
+  }
+
+  .zone-overlay
+  {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    background-color: black;
+    opacity: 0.5;
+
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  .popover-basic
+  {
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+    //pointer-events: none;
+  }
+}
