@@ -8,13 +8,12 @@ import axios from 'axios';
 import {withRouter} from "react-router-dom";
 import ReactTable from 'react-table'
 import ZoneEditor from './ZoneEditor';
+import _ from 'underscore';
 
 
 class StoreDetails extends React.Component {
     constructor(props) {
         super(props);
-
-        this.state = {isUploading: false, storeLayoutCacheBreaker: ""};
     }
 
     componentDidMount()
@@ -36,6 +35,18 @@ class StoreDetails extends React.Component {
         if (this.storeSubscription)
         {
             this.storeSubscription.unsubscribe();
+        }
+    }
+
+    shouldComponentUpdate(nextProps, nextState)
+    {
+        if (nextProps.store._id !== this.props.store._id)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
         }
     }
 
@@ -69,6 +80,27 @@ class StoreDetails extends React.Component {
         upload.click();
     }
 
+    updateZones(zones)
+    {
+        const store = this.props.store;
+        store.zones = zones;
+        this.props.updateStore(store);
+    }
+
+    updateZoneEditorState(zoneEditorState, callback)
+    {
+        const newEditorState = _.clone(this.props.editorState);
+        newEditorState.zoneEditor = zoneEditorState;
+        this.setState(newEditorState, callback);
+    }
+
+
+    // Override setState
+    setState(newState, callback)
+    {
+        this.props.updateEditorState(_.extend({}, this.props.editorState, newState), callback);
+    }
+
 
     render() {
 
@@ -84,33 +116,44 @@ class StoreDetails extends React.Component {
                             <h2>Store Map</h2>
                             <div className="storeMap" onClick={this.uploadNewStoreMap.bind(this)}>
                                 <i className="fa fa-upload" />
-                                <img className='store-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout?" + this.state.storeLayoutCacheBreaker} />
+                                <img className='store-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout?" + this.props.editorState.storeLayoutCacheBreaker} />
 
-                                {this.state.frame &&
-                                    this.state.frame.people.map((person) =>
-                                        <img className="person-location"
-                                             src='/img/person.png'
-                                             style={{
-                                                 "left": person[1][0] - personImageOffsetX + 300,
-                                                 "top": person[1][1] - personImageOffsetY + 300
-                                             }}
-                                        />
-                                    )
+                                {this.props.editorState.frame &&
+                                this.props.editorState.frame.people.map((person) =>
+                                    <img className="person-location"
+                                         src='/img/person.png'
+                                         style={{
+                                             "left": person[1][0] - personImageOffsetX + 300,
+                                             "top": person[1][1] - personImageOffsetY + 300
+                                         }}
+                                    />
+                                )
                                 }
 
                                 <div className="overlay"></div>
 
-                                {this.state.showProgress && <div data-label={this.state.progress} className="radial-bar radial-bar-1 radial-bar-lg"></div>}
+                                {this.props.editorState.showProgress && <div data-label={this.props.editorState.progress} className="radial-bar radial-bar-1 radial-bar-lg"></div>}
                             </div>
                         </Col>
                     </Row>
-                    <Row>
-                        <Col xs={12}>
-                            <h2>Zones</h2>
+                    {
+                        this.props.store ?
+                            <Row>
+                                <Col xs={12}>
+                                    <h2>Zones</h2>
 
-                            <ZoneEditor src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout?" + this.state.storeLayoutCacheBreaker}/>
-                        </Col>
-                    </Row>
+                                    <ZoneEditor
+                                        src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout?" + this.props.editorState.storeLayoutCacheBreaker}
+                                        zones={this.props.store.zones}
+                                        editorState={this.props.editorState ? this.props.editorState.zoneEditor : {}}
+                                        updateZones={this.updateZones.bind(this)}
+                                        updateEditorState={this.updateZoneEditorState.bind(this)}
+                                    />
+                                </Col>
+                            </Row>
+                            : null
+
+                    }
                 </Panel>
             </div>
         );

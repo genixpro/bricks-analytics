@@ -24,7 +24,8 @@ class ViewStore extends React.Component {
             storeLayoutCacheBreaker: "",
             isUpdatingStore: false,
             showUpdateFailure: false,
-            showUpdateSuccess: false
+            showUpdateSuccess: false,
+            editorState: {}
         };
     }
 
@@ -93,6 +94,11 @@ class ViewStore extends React.Component {
         });
     }
 
+    updateEditorState(editorState, callback)
+    {
+        this.setState({editorState}, callback);
+    }
+
 
     render() {
         const cameraColumns = [{
@@ -124,10 +130,10 @@ class ViewStore extends React.Component {
                         {
                             this.state.store._id &&
                              <div>
-                                 <Route path="/store/:storeId/details" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this)}))(StoreDetails)} />
-                                 <Route path="/store/:storeId/image_processors" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this)}))(StoreImageProcessors)} />
-                                 <Route path="/store/:storeId/cameras" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this)}))(StoreCameras)} />
-                                 <Route path="/store/:storeId/camera/:cameraId" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this)}))(StoreCameras)} />
+                                 <Route path="/store/:storeId/details" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(StoreDetails)} />
+                                 <Route path="/store/:storeId/image_processors" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(StoreImageProcessors)} />
+                                 <Route path="/store/:storeId/cameras" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(StoreCameras)} />
+                                 <Route path="/store/:storeId/camera/:cameraId" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(StoreCameras)} />
                              </div>
                         }
                         { /* END panel */ }
