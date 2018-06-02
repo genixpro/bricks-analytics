@@ -176,25 +176,25 @@ class ZoneEditor extends React.Component {
             let zoneMinimumWidth = 20.0 / maxWidth;
             let zoneMinimumHeight = 20.0 / maxHeight;
 
-            if (editorState.zoneResizingDirection === 'top')
+            if (editorState.zoneResizingDirection.indexOf('top') !== -1)
             {
                 yDisplacement = Math.min(yDisplacement, editorState.zoneStartHeight-zoneMinimumHeight);
                 newState.selectedZone.top = editorState.zoneStartY + yDisplacement;
                 newState.selectedZone.height = editorState.zoneStartHeight - yDisplacement;
             }
-            else if (editorState.zoneResizingDirection === 'bottom')
+            if (editorState.zoneResizingDirection.indexOf('bottom') !== -1)
             {
                 yDisplacement = Math.max(yDisplacement, -editorState.zoneStartHeight+zoneMinimumHeight);
                 newState.selectedZone.bottom = editorState.zoneStartY + yDisplacement;
                 newState.selectedZone.height = editorState.zoneStartHeight + yDisplacement;
             }
-            else if (editorState.zoneResizingDirection === 'left')
+            if (editorState.zoneResizingDirection.indexOf('left') !== -1)
             {
                 xDisplacement = Math.min(xDisplacement, editorState.zoneStartWidth-zoneMinimumWidth);
                 newState.selectedZone.left = editorState.zoneStartX + xDisplacement;
                 newState.selectedZone.width = editorState.zoneStartWidth - xDisplacement;
             }
-            else if (editorState.zoneResizingDirection === 'right')
+            if (editorState.zoneResizingDirection.indexOf('right') !== -1)
             {
                 xDisplacement = Math.max(xDisplacement, -editorState.zoneStartWidth+zoneMinimumWidth);
                 newState.selectedZone.right = editorState.zoneStartX + xDisplacement;
@@ -203,25 +203,25 @@ class ZoneEditor extends React.Component {
 
             const snapPoints = this.findSnapPoints(newState.selectedZone);
 
-            if (editorState.zoneResizingDirection === 'top' && !_.isUndefined(snapPoints.top))
+            if (editorState.zoneResizingDirection.indexOf('top') !== -1 && !_.isUndefined(snapPoints.top))
             {
                 const snapDisplacement = snapPoints.top - newState.selectedZone.top;
                 newState.selectedZone.height = newState.selectedZone.height - snapDisplacement;
                 newState.selectedZone.top = snapPoints.top;
             }
-            else if (editorState.zoneResizingDirection === 'bottom' && !_.isUndefined(snapPoints.bottom))
+            if (editorState.zoneResizingDirection.indexOf('bottom') !== -1 && !_.isUndefined(snapPoints.bottom))
             {
                 const snapDisplacement = snapPoints.bottom - newState.selectedZone.bottom;
                 newState.selectedZone.height = newState.selectedZone.height + snapDisplacement;
                 newState.selectedZone.bottom = snapPoints.bottom;
             }
-            else if (editorState.zoneResizingDirection === 'left' && !_.isUndefined(snapPoints.left))
+            if (editorState.zoneResizingDirection.indexOf('left') !== -1 && !_.isUndefined(snapPoints.left))
             {
                 const snapDisplacement = snapPoints.left - newState.selectedZone.left;
                 newState.selectedZone.width = newState.selectedZone.width - snapDisplacement;
                 newState.selectedZone.left = snapPoints.left;
             }
-            else if (editorState.zoneResizingDirection === 'right' && !_.isUndefined(snapPoints.right))
+            if (editorState.zoneResizingDirection.indexOf('right') !== -1 && !_.isUndefined(snapPoints.right))
             {
                 const snapDisplacement = snapPoints.right - newState.selectedZone.right;
                 newState.selectedZone.width = newState.selectedZone.width + snapDisplacement;
@@ -568,6 +568,26 @@ class ZoneEditor extends React.Component {
         {
             newState.zoneStartY = zone.bottom;
         }
+        else if (direction === 'top-left')
+        {
+            newState.zoneStartX = zone.left;
+            newState.zoneStartY = zone.top;
+        }
+        else if (direction === 'top-right')
+        {
+            newState.zoneStartX = zone.right;
+            newState.zoneStartY = zone.top;
+        }
+        else if (direction === 'bottom-left')
+        {
+            newState.zoneStartX = zone.left;
+            newState.zoneStartY = zone.bottom;
+        }
+        else if (direction === 'bottom-right')
+        {
+            newState.zoneStartY = zone.bottom;
+            newState.zoneStartX = zone.right;
+        }
 
         this.setState(newState)
     }
@@ -725,10 +745,16 @@ class Zone  extends React.Component {
 
             <div className="zone-body-drag-area"
                  onMouseDown={this.onBodyMouseDown.bind(this)} />
+
             <div className="zone-top-handle"  onMouseDown={this.onResizeMouseDown.bind(this, 'top')}/>
             <div className="zone-left-handle" onMouseDown={this.onResizeMouseDown.bind(this, 'left')}/>
             <div className="zone-right-handle" onMouseDown={this.onResizeMouseDown.bind(this, 'right')}/>
             <div className="zone-bottom-handle" onMouseDown={this.onResizeMouseDown.bind(this, 'bottom')}/>
+
+            <div className="zone-top-left-handle"  onMouseDown={this.onResizeMouseDown.bind(this, 'top-left')}/>
+            <div className="zone-top-right-handle" onMouseDown={this.onResizeMouseDown.bind(this, 'top-right')}/>
+            <div className="zone-bottom-left-handle" onMouseDown={this.onResizeMouseDown.bind(this, 'bottom-left')}/>
+            <div className="zone-bottom-right-handle" onMouseDown={this.onResizeMouseDown.bind(this, 'bottom-right')}/>
 
             <div className="zone-info">
                 <p>zone-{this.props.zone.id}</p>

@@ -79,6 +79,54 @@
       position: absolute;
     }
 
+    .zone-top-left-handle
+    {
+      left: -10px;
+      right: 10px;
+      top: -10px;
+      bottom: 10px;
+      width: 20px;
+      height: 20px;
+      cursor: nw-resize;
+      position: absolute;
+    }
+
+    .zone-top-right-handle
+    {
+      left: calc(100% - 10px);
+      right: 10px;
+      top: -10px;
+      bottom: 10px;
+      width: 20px;
+      height: 20px;
+      cursor: ne-resize;
+      position: absolute;
+    }
+
+    .zone-bottom-left-handle
+    {
+      left: -10px;
+      right: 10px;
+      top: calc(100% - 10px);
+      bottom: 10px;
+      width: 20px;
+      height: 20px;
+      cursor: sw-resize;
+      position: absolute;
+    }
+
+    .zone-bottom-right-handle
+    {
+      left: calc(100% - 10px);
+      right: 10px;
+      top: calc(100% - 10px);
+      bottom: 10px;
+      width: 20px;
+      height: 20px;
+      cursor: se-resize;
+      position: absolute;
+    }
+
     .zone-body-drag-area {
       position: absolute;
       left: 0;
