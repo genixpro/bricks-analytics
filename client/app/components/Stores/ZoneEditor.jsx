@@ -657,7 +657,7 @@ class ZoneEditor extends React.Component {
                         placement="right"
                         positionLeft={(editorState.selectedZone.left + editorState.selectedZone.width) * editorState.imageMaxWidth}
                         positionTop={editorState.selectedZone.top* editorState.imageMaxHeight}
-                        title="Zone Details"
+                        title={"Zone " + editorState.selectedZone.id + " Details"}
                     >
                         <FormControl type="text" placeholder="Name" className="form-control" value={editorState.selectedZone.name} onChange={this.zoneNameChanged.bind(this)}/>
                         <br/>
@@ -729,6 +729,20 @@ class Zone  extends React.Component {
             <div className="zone-left-handle" onMouseDown={this.onResizeMouseDown.bind(this, 'left')}/>
             <div className="zone-right-handle" onMouseDown={this.onResizeMouseDown.bind(this, 'right')}/>
             <div className="zone-bottom-handle" onMouseDown={this.onResizeMouseDown.bind(this, 'bottom')}/>
+
+            <div className="zone-info">
+                <p>zone-{this.props.zone.id}</p>
+                {
+                    this.props.zone.name ?
+                        <p>{this.props.zone.name}</p>
+                        : null
+                }
+                {
+                    this.props.zone.zoneType ?
+                        <p>{this.props.zone.zoneType}</p>
+                        : null
+                }
+            </div>
         </div>
     }
 }
