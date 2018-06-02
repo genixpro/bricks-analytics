@@ -10,7 +10,6 @@ import {
     FormGroup,
     InputGroup,
     DropdownButton,
-    MenuItem,
     Tab,
     Tabs,
     Nav,
@@ -20,6 +19,7 @@ import Select from 'react-select'
 import 'react-select/dist/react-select.css'
 import _ from "underscore";
 import classNames from 'classnames';
+
 
 class ZoneEditor extends React.Component {
     constructor(props) {
@@ -77,7 +77,8 @@ class ZoneEditor extends React.Component {
         else {
             this.setState({
                 isCreatingZone: false,
-                isEditingZone: false
+                isEditingZone: false,
+                selectedZone: null
             })
         }
     }
@@ -349,13 +350,21 @@ class ZoneEditor extends React.Component {
         {
             this.setState({
                 isDraggingZone: false,
-                selectedZone: null
+                isEditingZone: true
             });
         }
         else if (editorState.isResizingZone)
         {
             this.setState({
                 isResizingZone: false,
+                isEditingZone: true
+            });
+        }
+        else if (editorState.isEditingZone)
+        {
+            this.setState({
+                isResizingZone: false,
+                isEditingZone: false,
                 selectedZone: null
             });
         }
@@ -382,11 +391,11 @@ class ZoneEditor extends React.Component {
 
 
 
-    onChangeZoneType(newType) {
+    onChangeZoneType(newType, event) {
         this.setState({
-            zoneType: newType,
-            isEditingZone: false
-        })
+            zoneType: newType
+        });
+        event.preventDefault();
     }
 
     preventEventHandler(e) {
@@ -440,21 +449,35 @@ class ZoneEditor extends React.Component {
         this.setState(newState)
     }
 
+    deleteSelectedZone()
+    {
+        const editorState = this.props.editorState || {};
+        const newZones = _.filter(this.props.zones, (zone) => zone.id !== editorState.selectedZone.id);
+        this.updateZones(newZones);
+        this.setState({
+            isEditingZone: false,
+            selectedZone: null
+        })
+    }
+
+    zoneNameChanged(event)
+    {
+        const editorState = this.props.editorState || {};
+        const zone = _.findWhere(this.props.zones, {id: editorState.selectedZone.id});
+        zone.name = event.target.value;
+        this.updateZones(zones);
+        this.setState({selectedZone: zone})
+    }
 
     // Override setState
     setState(newState, callback) {
         const editorState = this.props.editorState || {};
         newState = _.extend({}, editorState, newState);
         if (newState.dragX) {
-            newState.zone = this.computeZoneCoordinates(newState);
+            newState.newZone= this.computeZoneCoordinates(newState);
         }
         else {
-            newState.zone = null;
-        }
-
-        if (newState.selectedZone && newState.selectedZone.right != (newState.selectedZone.left + newState.selectedZone.width))
-        {
-            alert('it happened');
+            newState.newZone= null;
         }
 
         this.props.updateEditorState(newState, callback);
@@ -462,9 +485,10 @@ class ZoneEditor extends React.Component {
 
     render() {
         const options = [
-            {value: 'chocolate', label: 'Chocolate'},
-            {value: 'strawberry', label: 'Strawberry'},
-            {value: 'vanilla', label: 'Vanilla'}
+            {value: 'entry', label: 'Entry & Exit'},
+            {value: 'checkout', label: 'Checkout'},
+            {value: 'shelving', label: 'Shelving'},
+            {value: 'isle', label: 'Isle'}
         ];
         
         const editorState = this.props.editorState || {};
@@ -477,12 +501,12 @@ class ZoneEditor extends React.Component {
                 <img src={this.props.src} draggable={false}/>
             </div>
             {
-                editorState.isCreatingZone && editorState.zone ?
+                editorState.isCreatingZone && editorState.newZone ?
                     <div className="zone-overlay" style={{
-                        "left": editorState.zone.left,
-                        "top": editorState.zone.top,
-                        "height": editorState.zone.height,
-                        "width": editorState.zone.width
+                        "left": editorState.newZone.left,
+                        "top": editorState.newZone.top,
+                        "height": editorState.newZone.height,
+                        "width": editorState.newZone.width
                     }}/>
                     : null
             }
@@ -504,18 +528,29 @@ class ZoneEditor extends React.Component {
                 : null
             }
             {
-                editorState.isEditingZone ?
+                editorState.selectedZone && editorState.isEditingZone ?
                     <Popover
-                        id="popover-basic"
+                        id="zone-popover"
                         placement="right"
-                        positionLeft={editorState.editorX}
-                        positionTop={editorState.editorY - 48}
-                        title="Popover right">
+                        positionLeft={editorState.selectedZone.left + editorState.selectedZone.width}
+                        positionTop={editorState.selectedZone.top}
+                        title="Zone Details"
+                    >
+                        <FormControl type="text" placeholder="Name" className="form-control" value={editorState.selectedZone.name} onChange={this.zoneNameChanged.bind(this)}/>
+                        <br/>
                         <Select
                             options={options}
                             value={editorState.zoneType}
                             onChange={this.onChangeZoneType.bind(this)}
+                            style={{"width": "200px"}}
                         />
+                        <br/>
+                        <br/>
+                        <Button
+                            onClick={this.deleteSelectedZone.bind(this)}
+                            bsStyle={"danger"}
+                        >Delete</Button>
+                        <br/>
                     </Popover>
                     : null
             }
@@ -527,14 +562,19 @@ class Zone  extends React.Component {
 
     onResizeMouseDown(direction, event)
     {
-        this.props.onZoneResizeMouseDown(this.props.zone, direction, event);
-        event.preventDefault();
+        if (event.button === 0) {
+            this.props.onZoneResizeMouseDown(this.props.zone, direction, event);
+            event.preventDefault();
+        }
     }
 
     onBodyMouseDown(event)
     {
-        this.props.onZoneMouseDown(this.props.zone, event);
-        event.preventDefault();
+        if (event.button === 0)
+        {
+            this.props.onZoneMouseDown(this.props.zone, event);
+            event.preventDefault();
+        }
     }
 
     onMouseMove(event)
@@ -544,8 +584,11 @@ class Zone  extends React.Component {
 
     onMouseUp(event)
     {
-        this.props.onZoneMouseUp(event);
-        event.preventDefault();
+        if (event.button === 0)
+        {
+            this.props.onZoneMouseUp(event);
+            event.preventDefault();
+        }
     }
 
 

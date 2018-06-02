@@ -27,6 +27,11 @@ const auth = new Auth();
 let ws = new WebSocket('ws://localhost:15674/ws');
 let messagingClient =  Stomp.over(ws);
 
+messagingClient.debug = function(str) {
+    // debugging messaging
+    // console.log("HERE!", str);
+};
+
 const onError = () => {
     // Just keep reconnecting after 1 second timeout
     setTimeout(() =>
