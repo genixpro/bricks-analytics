@@ -96,34 +96,7 @@ class MultiImageAnalyzer:
 
         people = []
 
-        for image in images:
-            cameraId = image['cameraId']
-
-            cameraInfo = None
-            for camera in store['cameras']:
-                if camera['id'] == cameraId:
-                    cameraInfo = camera
-                    break
-
-            if 'rotationVector' in cameraInfo and 'translationVector' in cameraInfo:
-                rotationMatrix = cv2.Rodrigues(np.array(cameraInfo['rotationVector']))[0]
-                    
-                for index, person in enumerate(image['people']):
-                    feet = []
-                    if person[15][0] != 0:
-                        feet.append(person[15])
-                    if person[16][0] != 0:
-                        feet.append(person[16])
-                    if len(feet) > 0:
-                        screenLocation = np.mean(np.array(feet), axis=0)
-
-                        height = 10.0 # 10cm, approximate height of shin off the ground, which is where the
-                        storeLocation = self.inverseScreenLocation(screenLocation, height, rotationMatrix, np.array(cameraInfo['translationVector']), np.array(cameraInfo['cameraMatrix']))
-
-                        people.append((index, (storeLocation[0][0], storeLocation[1][0])))
-
-                        if index == 0:
-                            print('person ' + str(index) + ': x:', storeLocation[0][0], 'y:', storeLocation[1][0])
+        pass # Need to use image analyzer processMultiCameraFrameTimeSeries function.
 
         frame['people'] = people
         frame['needsUpdate'] = False

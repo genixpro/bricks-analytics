@@ -31,20 +31,28 @@ def breakApartImage(captureFullImage, cameras):
         cameraImages.append(cameraImageArray)
     return cameraImages
 
-def drawDebugStoreMap(storeMap, points):
+def drawDebugStoreMap(storeMap, points, textScale=0.5, boxSize=25):
     frameMap = storeMap.copy()
 
     for pointIndex, point in enumerate(points):
         ids = [pointIndex]
         if 'detectionIds' in point:
             ids = point['detectionIds']
+        elif 'visitId' in point:
+            ids = [point['visitId']]
+        elif 'id' in point:
+            ids = [point['id']]
+
+        color = (0, 255, 0)
+        if 'color' in point:
+            color = point['color']
 
         cv2.rectangle(frameMap, (int(point['x'] - 25), int(point['y'] - 20)),
-                      (int(point['x'] + 25), int(point['y'] + 20)), (0, 255, 0), 3)
+                      (int(point['x'] + 25), int(point['y'] + 20)), color, 3)
 
         for index, id in enumerate(ids):
             font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(frameMap, str(id), (int(point['x']), int(point['y'] + index*15)), font, 0.5, (0, 255, 0), 2,
+            cv2.putText(frameMap, str(id), (int(point['x']), int(point['y'] + index*15)), font, textScale, color, 1,
                         cv2.LINE_AA)
 
     return frameMap
@@ -93,6 +101,8 @@ if __name__ == '__main__':
         cameraConfiguration = {
             "storeId": 1,
             "cameraId": "test-camera-" + str(cameraIndex),
+            "width": camera['width'],
+            "height": camera['height'],
             "calibrationReferencePoint": {
                 "x": (annotations["frames"]["0"][0]["x1"] * annotationWidthAdjust - data['storeMap']['x']), # TODO: Technically this isn't correct, as it could be any one of x1, y1, x2, y2 depending on the angle of the camera.
                 "y": (annotations["frames"]["0"][0]["y1"] * annotationHeightAdjust - data['storeMap']['y']),
@@ -123,23 +133,33 @@ if __name__ == '__main__':
 
         singleCameraConfigurations.append(cameraConfiguration)
 
-
     positions = []
     for cameraIndex, camera in enumerate(singleCameraConfigurations):
-        for x in range(10):
-            location = [50*x, 50*x]
-            position = imageAnalyzer.inverseScreenLocation(
-                location=location,
-                height=0,
-                rotationVector=numpy.array(camera['rotationVector']),
-                translationVector=numpy.array(camera['translationVector']),
-                cameraMatrix=numpy.array(camera['cameraMatrix']),
-                calibrationReference=camera['calibrationReferencePoint']
-            )
+        for x in range(11):
+            for y in range(11):
+                location = [(camera['width']/10)*x, (camera['height']/10)*y]
+                position = imageAnalyzer.inverseScreenLocation(
+                    location=location,
+                    height=0,
+                    rotationVector=numpy.array(camera['rotationVector']),
+                    translationVector=numpy.array(camera['translationVector']),
+                    cameraMatrix=numpy.array(camera['cameraMatrix']),
+                    calibrationReference=camera['calibrationReferencePoint']
+                )
 
-            positions.append({"x": position[0], "y": position[1]})
+                color = None
+                if (cameraIndex % 3) == 0:
+                    color = (0, 255, 0, 0.5)
+                if (cameraIndex % 3) == 1:
+                    color = (255, 0, 0, 0.5)
+                if (cameraIndex % 3) == 2:
+                    color = (0, 0, 255, 0.5)
 
-    debugMap = drawDebugStoreMap(storeMapImageArray, positions)
+                positions.append({"x": position[0], "y": position[1], "id": str(x) + ","+str(y), "color": color})
+
+
+
+    debugMap = drawDebugStoreMap(storeMapImageArray, positions, textScale=0.50)
     cv2.imshow('store-map-test', debugMap)
     cv2.waitKey(2000)
 
@@ -185,6 +205,8 @@ if __name__ == '__main__':
 
             singleCameraFrames.append(singleCameraFrame)
 
+            cv2.waitKey(25)
+
             debugImages.append(debugImage)
 
         # Now we merge them all together to produce a multi-camera-frame, and add that to the list.
@@ -193,16 +215,39 @@ if __name__ == '__main__':
 
         resultDebugImages.append(debugImages)
 
-    for multiCameraFrameIndex, multiCameraFrame in enumerate(multiCameraFrames):
-        resultDebugImages[multiCameraFrameIndex].append(drawDebugStoreMap(storeMapImageArray, multiCameraFrame['people']))
+    cv2.waitKey(50)
+
+    # Now we process all the multi camera frames through a time-series analysis
+    currentState = {}
+    timeSeriesFrames = []
+    for frameIndex, multiCameraFrame in enumerate(multiCameraFrames):
+        timeSeriesFrame, state = imageAnalyzer.processMultiCameraFrameTimeSeries(multiCameraFrame, currentState)
+        currentState = state
+        timeSeriesFrames.append(timeSeriesFrame)
+
+    for frameIndex in range(len(multiCameraFrames)):
+        multiCameraFrame = multiCameraFrames[frameIndex]
+        timeSeriesFrame = timeSeriesFrames[frameIndex]
+
+        groundTruthPoints = [{
+            "x": (annotation['x1']/2 + annotation['x2']/2) * annotationWidthAdjust - data['storeMap']['x'],
+            "y": (annotation['y1']/2 + annotation['y2']/2) * annotationHeightAdjust - data['storeMap']['y'],
+            "id": annotation['tags'][0],
+            "color": (255, 0, 0)
+        } for annotation in annotations['frames'][str(frameIndex+1)]]
+
+        resultDebugImages[frameIndex].append(drawDebugStoreMap(storeMapImageArray, multiCameraFrame['people'] + groundTruthPoints))
+        resultDebugImages[frameIndex].append(drawDebugStoreMap(storeMapImageArray, timeSeriesFrame['people'] + groundTruthPoints))
 
     for i in range(data['numberOfImages']):
         debugImages = resultDebugImages[i]
         for imageIndex, debugImage in enumerate(debugImages):
-            if imageIndex < (len(debugImages)-1):
+            if imageIndex < (len(debugImages)-2):
                 frameName = data['cameras'][imageIndex]['name']
+            elif imageIndex == len(debugImages)-2:
+                frameName = 'Store Map (Individual Frames)'
             else:
-                frameName = 'Store Map'
+                frameName = 'Store Map (Time Series Analysis)'
             cv2.imshow(frameName, debugImage)
             cv2.waitKey(10)
         time.sleep(5.0)

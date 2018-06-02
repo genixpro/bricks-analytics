@@ -281,47 +281,61 @@ class ImageAnalyzer:
                         multiCameraFrame['people'].append({
                             "x": x,
                             "y": y,
-                            "detectionIds": [person['detectionId']]
+                            "detectionIds": [person['detectionId']],
+                            "cameraIds": [cameraInfo['cameraId']]
                         })
 
-        # Crude algorithm - merge together any detections which are < 50 px from each other
+        # Crude algorithm - merge together any detections from different cameras which are < 50 px from each other
         # TODO: Replace this crude algorithm
-        mergeDistance = 100
-        personIndex1 = 0
-        while personIndex1 < len(multiCameraFrame['people']):
-            mergePerson = None
-            mergePersonIndex = None
+
+        didMerge = True
+        while didMerge:
+            didMerge = False
+
+            mergeDistance = 100
+            personIndex1 = 0
             personIndex2 = 0
-            while personIndex2 < len(multiCameraFrame['people']):
-                if personIndex1 != personIndex2:
-                    person1 = multiCameraFrame['people'][personIndex1]
-                    person2 = multiCameraFrame['people'][personIndex2]
+            mergePerson1 = None
+            mergePersonIndex1 = None
+            mergePerson2 = None
+            mergePersonIndex2 = None
+            minDistance = None
 
-                    dist = scipy.spatial.distance.euclidean(
-                        [person1['x'], person1['y']],
-                        [person2['x'], person2['y']]
-                    )
+            while personIndex1 < len(multiCameraFrame['people']):
+                personIndex2 = 0
+                while personIndex2 < len(multiCameraFrame['people']):
+                    if personIndex1 != personIndex2:
+                        person1 = multiCameraFrame['people'][personIndex1]
+                        person2 = multiCameraFrame['people'][personIndex2]
 
-                    if dist < mergeDistance:
-                        mergePersonIndex = personIndex2
-                        mergePerson = person2
-                        break
+                        if len(set(person1['cameraIds']).intersection(set(person2['cameraIds']))) == 0:
+                            dist = scipy.spatial.distance.euclidean(
+                                [person1['x'], person1['y']],
+                                [person2['x'], person2['y']]
+                            )
 
-                personIndex2 += 1
+                            if dist < mergeDistance and (minDistance is None or dist < minDistance):
+                                minDistance = dist
+                                mergePerson1 = person1
+                                mergePersonIndex1 = personIndex1
 
-            if mergePerson:
-                person1 = multiCameraFrame['people'][personIndex1]
+                                mergePerson2 = person2
+                                mergePersonIndex2 = personIndex2
+                                break
 
-                person1['x'] = person1['x'] / 2 + mergePerson['x'] / 2
-                person1['y'] = person1['y'] / 2 + mergePerson['y'] / 2
-
-                person1['detectionIds'] = person1['detectionIds'] + mergePerson['detectionIds']
-
-                del multiCameraFrame['people'][mergePersonIndex]
-            else:
+                    personIndex2 += 1
                 personIndex1 += 1
 
-        pprint(multiCameraFrame)
+            if mergePerson1 is not None:
+                mergePerson1['x'] = mergePerson1['x'] / 2 + mergePerson2['x'] / 2
+                mergePerson1['y'] = mergePerson1['y'] / 2 + mergePerson2['y'] / 2
+
+                mergePerson1['detectionIds'] = mergePerson1['detectionIds'] + mergePerson2['detectionIds']
+                mergePerson1['cameraIds'] = mergePerson1['cameraIds'] + mergePerson2['cameraIds']
+
+                del multiCameraFrame['people'][mergePersonIndex2]
+
+        multiCameraFrame['storeId'] = singleCameraFrames[0]['storeId']
 
         return multiCameraFrame
 
@@ -526,7 +540,7 @@ class ImageAnalyzer:
         found, corners = cv2.findChessboardCorners(image=gray_image, patternSize=chessBoardSize, flags=flags)
 
         if found:
-            cameraMatrix = np.array([[640.0, 0.0, 640.0], [0.0, 480.0, 480.0], [0.0, 0.0, 1.0]])
+            cameraMatrix = np.array([[640.0, 0.0, 320], [0.0, 480.0, 240], [0.0, 0.0, 1.0]])
             cameraDistortionCoefficients = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
             cameraRotationVector = None
             cameraTranslationVector = None
@@ -544,6 +558,39 @@ class ImageAnalyzer:
             }, state, debugImage)
         else:
             return (None, state, debugImage)
+
+
+    def processMultiCameraFrameTimeSeries(self, multiCameraFrame, state):
+        """
+            This method is used to process the sequence of multi-camera-frame objects. It creates TimeSeriesFrame objects.
+
+            :param multiCameraFrame: The current multi camera frame.
+            :param state: The current state of the multi-camera-frame system. This contains arbitrary data which can be pickled in python
+            :return: (timeSeriesFrame, state)
+        """
+        if 'tracker' not in state:
+            state['tracker'] = Sort(max_age=5, min_hits=3)
+
+        tracker = state['tracker']
+        detections = [[person['x']-10, person['y']-10, person['x']+10, person['y']+10, 1.0] for person in multiCameraFrame['people']]
+
+        tracked = tracker.update(np.array(detections))
+
+        timeSeriesFrame = {
+            'people': []
+        }
+
+        for personIndex, boundingBox in enumerate(tracked):
+            newPersonData = {
+                'visitorId': multiCameraFrame['storeId'] + boundingBox[4],
+                "x": boundingBox[0]/2 + boundingBox[2]/2,
+                "y": boundingBox[1]/2 + boundingBox[3]/2
+            }
+
+            timeSeriesFrame['people'].append(newPersonData)
+
+        return timeSeriesFrame, state
+
 
     @staticmethod
     def sharedInstance():
