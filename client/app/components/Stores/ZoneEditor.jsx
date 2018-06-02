@@ -26,10 +26,6 @@ class ZoneEditor extends React.Component {
         super(props);
     }
 
-    componentDidMount() {
-
-    }
-
     /**
      * Returns the next valid zone id
      */
@@ -61,8 +57,27 @@ class ZoneEditor extends React.Component {
 
     }
 
+    componentDidMount() {
+        const editorState = this.props.editorState || {};
+
+        const maxWidth = document.getElementById('zone-editor-image').getBoundingClientRect().width;
+        const maxHeight = document.getElementById('zone-editor-image').getBoundingClientRect().height;
+
+        if (maxHeight !== editorState.imageMaxHeight || maxWidth !== editorState.imageMaxWidth)
+        {
+            this.setState({
+                imageMaxWidth: maxWidth,
+                imageMaxHeight: maxHeight
+            })
+        }
+    }
+
     onMouseDown(evt) {
         const editorState = this.props.editorState || {};
+
+        const maxWidth = document.getElementById('zone-editor-image').getBoundingClientRect().width;
+        const maxHeight = document.getElementById('zone-editor-image').getBoundingClientRect().height;
+
         if (editorState.isCreatingZone) {
             // treat like a mouse up
             this.onMouseUp(evt);
@@ -72,8 +87,8 @@ class ZoneEditor extends React.Component {
             this.setState({
                 isCreatingZone: true,
                 isEditingZone: false,
-                zoneStartX: evt.nativeEvent.offsetX,
-                zoneStartY: evt.nativeEvent.offsetY,
+                zoneStartX: evt.nativeEvent.offsetX / maxWidth,
+                zoneStartY: evt.nativeEvent.offsetY / maxHeight,
                 startX: evt.nativeEvent.pageX,
                 startY: evt.nativeEvent.pageY,
                 dragX: evt.nativeEvent.pageX,
@@ -91,6 +106,10 @@ class ZoneEditor extends React.Component {
 
     onMouseMove(evt) {
         const editorState = this.props.editorState || {};
+
+        const maxWidth = document.getElementById('zone-editor-image').getBoundingClientRect().width;
+        const maxHeight = document.getElementById('zone-editor-image').getBoundingClientRect().height;
+
         if (editorState.isCreatingZone && !editorState.isEditingZone) {
             // Start a new rectangle
             this.setState({
@@ -106,13 +125,10 @@ class ZoneEditor extends React.Component {
                 selectedZone: editorState.selectedZone
             };
 
-            newState.selectedZone.left = editorState.zoneStartX + (newState.dragX - editorState.startX);
-            newState.selectedZone.top = editorState.zoneStartY + (newState.dragY - editorState.startY);
+            newState.selectedZone.left = editorState.zoneStartX + (newState.dragX - editorState.startX) / maxWidth;
+            newState.selectedZone.top = editorState.zoneStartY + (newState.dragY - editorState.startY) / maxHeight;
 
             // Make sure the zone stays within bounds
-            const maxWidth = document.getElementById('zone-editor-image').getBoundingClientRect().width;
-            const maxHeight = document.getElementById('zone-editor-image').getBoundingClientRect().height;
-
             newState.selectedZone.left = Math.max(newState.selectedZone.left, 0);
             newState.selectedZone.left = Math.min(newState.selectedZone.left, maxWidth - newState.selectedZone.width);
 
@@ -152,31 +168,35 @@ class ZoneEditor extends React.Component {
                 selectedZone: editorState.selectedZone
             };
 
-            let xDisplacement = (newState.dragX - editorState.startX);
-            let yDisplacement = (newState.dragY - editorState.startY);
-            let zoneMinimumSize = 20;
+            const maxWidth = document.getElementById('zone-editor-image').getBoundingClientRect().width;
+            const maxHeight = document.getElementById('zone-editor-image').getBoundingClientRect().height;
+
+            let xDisplacement = (newState.dragX - editorState.startX) / maxWidth;
+            let yDisplacement = (newState.dragY - editorState.startY) / maxHeight;
+            let zoneMinimumWidth = 20.0 / maxWidth;
+            let zoneMinimumHeight = 20.0 / maxHeight;
 
             if (editorState.zoneResizingDirection === 'top')
             {
-                yDisplacement = Math.min(yDisplacement, editorState.zoneStartHeight-zoneMinimumSize);
+                yDisplacement = Math.min(yDisplacement, editorState.zoneStartHeight-zoneMinimumHeight);
                 newState.selectedZone.top = editorState.zoneStartY + yDisplacement;
                 newState.selectedZone.height = editorState.zoneStartHeight - yDisplacement;
             }
             else if (editorState.zoneResizingDirection === 'bottom')
             {
-                yDisplacement = Math.max(yDisplacement, -editorState.zoneStartHeight+zoneMinimumSize);
+                yDisplacement = Math.max(yDisplacement, -editorState.zoneStartHeight+zoneMinimumHeight);
                 newState.selectedZone.bottom = editorState.zoneStartY + yDisplacement;
                 newState.selectedZone.height = editorState.zoneStartHeight + yDisplacement;
             }
             else if (editorState.zoneResizingDirection === 'left')
             {
-                xDisplacement = Math.min(xDisplacement, editorState.zoneStartWidth-zoneMinimumSize);
+                xDisplacement = Math.min(xDisplacement, editorState.zoneStartWidth-zoneMinimumWidth);
                 newState.selectedZone.left = editorState.zoneStartX + xDisplacement;
                 newState.selectedZone.width = editorState.zoneStartWidth - xDisplacement;
             }
             else if (editorState.zoneResizingDirection === 'right')
             {
-                xDisplacement = Math.max(xDisplacement, -editorState.zoneStartWidth+zoneMinimumSize);
+                xDisplacement = Math.max(xDisplacement, -editorState.zoneStartWidth+zoneMinimumWidth);
                 newState.selectedZone.right = editorState.zoneStartX + xDisplacement;
                 newState.selectedZone.width = editorState.zoneStartWidth + xDisplacement;
             }
@@ -214,9 +234,13 @@ class ZoneEditor extends React.Component {
 
     findSnapPoints(snapZone)
     {
-        const editorState = this.props.editorState || {};
-        const snapDistance = 20;
-        const snapPerpendicularMaxDistance = 30;
+        const maxWidth = document.getElementById('zone-editor-image').getBoundingClientRect().width;
+        const maxHeight = document.getElementById('zone-editor-image').getBoundingClientRect().height;
+
+        const snapWidth = 20 / maxWidth;
+        const snapHeight = 20 / maxHeight;
+        const snapPerpendicularMaxWidth = 30 / maxWidth;
+        const snapPerpendicularMaxHeight = 30 / maxHeight;
 
         // Go through all the other zones, determine if there are any snap points
         let leftSnapPoints = [];
@@ -250,59 +274,59 @@ class ZoneEditor extends React.Component {
                     Math.abs(snapZone.bottom - zone.bottom)
                 );
 
-                const allowVerticalSnap = hasHorizontalOverlap || minimumHorizontalDistance < snapPerpendicularMaxDistance;
-                const allowHorizontalSnap = hasVerticalOverlap || minimumVerticalDistance < snapPerpendicularMaxDistance;
+                const allowVerticalSnap = hasHorizontalOverlap || minimumHorizontalDistance < snapPerpendicularMaxWidth;
+                const allowHorizontalSnap = hasVerticalOverlap || minimumVerticalDistance < snapPerpendicularMaxHeight;
 
-                if (Math.abs(snapZone.left - zone.left) < snapDistance && allowHorizontalSnap)
+                if (Math.abs(snapZone.left - zone.left) < snapWidth && allowHorizontalSnap)
                 {
                     leftSnapPoints.push({
                         left: zone.left,
                         distance: Math.abs(snapZone.left - zone.left)
                     })
                 }
-                if (Math.abs(snapZone.left - zone.right) < snapDistance && allowHorizontalSnap)
+                if (Math.abs(snapZone.left - zone.right) < snapWidth && allowHorizontalSnap)
                 {
                     leftSnapPoints.push({
                         left: zone.right,
                         distance: Math.abs(snapZone.left - zone.right)
                     })
                 }
-                if (Math.abs(snapZone.right - zone.left) < snapDistance && allowHorizontalSnap)
+                if (Math.abs(snapZone.right - zone.left) < snapWidth && allowHorizontalSnap)
                 {
                     rightSnapPoints.push({
                         right: zone.left,
                         distance: Math.abs(snapZone.right - zone.left)
                     })
                 }
-                if (Math.abs(snapZone.right - zone.right) < snapDistance && allowHorizontalSnap)
+                if (Math.abs(snapZone.right - zone.right) < snapWidth && allowHorizontalSnap)
                 {
                     rightSnapPoints.push({
                         right: zone.right,
                         distance: Math.abs(snapZone.right - zone.right)
                     })
                 }
-                if (Math.abs(snapZone.top - zone.top) < snapDistance && allowVerticalSnap)
+                if (Math.abs(snapZone.top - zone.top) < snapHeight && allowVerticalSnap)
                 {
                     topSnapPoints.push({
                         top: zone.top,
                         distance: Math.abs(snapZone.top - zone.top)
                     })
                 }
-                if (Math.abs(snapZone.top - zone.bottom) < snapDistance && allowVerticalSnap)
+                if (Math.abs(snapZone.top - zone.bottom) < snapHeight && allowVerticalSnap)
                 {
                     topSnapPoints.push({
                         top: zone.bottom,
                         distance: Math.abs(snapZone.top - zone.bottom)
                     })
                 }
-                if (Math.abs(snapZone.bottom - zone.top) < snapDistance && allowVerticalSnap)
+                if (Math.abs(snapZone.bottom - zone.top) < snapHeight && allowVerticalSnap)
                 {
                     bottomSnapPoints.push({
                         bottom: zone.top,
                         distance: Math.abs(snapZone.bottom - zone.top)
                     })
                 }
-                if (Math.abs(snapZone.bottom - zone.bottom) < snapDistance && allowVerticalSnap)
+                if (Math.abs(snapZone.bottom - zone.bottom) < snapHeight && allowVerticalSnap)
                 {
                     bottomSnapPoints.push({
                         bottom: zone.bottom,
@@ -312,36 +336,32 @@ class ZoneEditor extends React.Component {
             }
         });
 
-        // Add in snap points for the outer edges of the map
-        const maxWidth = document.getElementById('zone-editor-image').getBoundingClientRect().width;
-        const maxHeight = document.getElementById('zone-editor-image').getBoundingClientRect().height;
-
-        if (snapZone.left < snapDistance)
+        if (snapZone.left < snapWidth)
         {
             leftSnapPoints.push({
                 left: 0,
                 distance: snapZone.left
             })
         }
-        if (snapZone.top < snapDistance)
+        if (snapZone.top < snapHeight)
         {
             topSnapPoints.push({
                 top: 0,
                 distance: snapZone.top
             })
         }
-        if ((maxWidth - snapZone.right) < snapDistance)
+        if ((1.0 - snapZone.right) < snapWidth)
         {
             rightSnapPoints.push({
-                right: maxWidth,
-                distance: (maxWidth - snapZone.right)
+                right: 1.0,
+                distance: (1.0 - snapZone.right)
             })
         }
-        if ((maxHeight - snapZone.bottom) < snapDistance)
+        if ((1.0 - snapZone.bottom) < snapHeight)
         {
             bottomSnapPoints.push({
-                bottom: maxHeight,
-                distance: (maxHeight - snapZone.bottom)
+                bottom: 1.0,
+                distance: (1.0 - snapZone.bottom)
             })
         }
 
@@ -435,25 +455,28 @@ class ZoneEditor extends React.Component {
 
 
     computeNewZoneCoordinates(newState) {
-        let width = Math.abs(newState.startX - newState.dragX);
-        let height = Math.abs(newState.startY - newState.dragY);
-        let left = Math.min(newState.zoneStartX, newState.zoneStartX + (newState.dragX - newState.startX));
-        let top = Math.min(newState.zoneStartY, newState.zoneStartY + (newState.dragY - newState.startY));
-
         // Make sure the zone stays within bounds
         const maxWidth = document.getElementById('zone-editor-image').getBoundingClientRect().width;
         const maxHeight = document.getElementById('zone-editor-image').getBoundingClientRect().height;
 
+        const minWidth = 20 / maxWidth;
+        const minHeight = 20 / maxHeight;
+
+        let width = Math.abs(newState.startX - newState.dragX) / maxWidth;
+        let height = Math.abs(newState.startY - newState.dragY) / maxHeight;
+        let left = Math.min(newState.zoneStartX, newState.zoneStartX + (newState.dragX - newState.startX) / maxWidth);
+        let top = Math.min(newState.zoneStartY, newState.zoneStartY + (newState.dragY - newState.startY) / maxHeight);
+
         width = Math.min(width, maxWidth - left);
         height = Math.min(height, maxHeight - top);
 
-        if (width < 20)
+        if (width < minWidth)
         {
-            width = 20;
+            width = minWidth;
         }
-        if (height < 20)
+        if (height < minHeight)
         {
-            height = 20;
+            height = minHeight;
         }
 
         const newZone = {id: 'new', left, top, width, height, bottom: top+height, right: left+width};
@@ -603,10 +626,10 @@ class ZoneEditor extends React.Component {
             {
                 editorState.isCreatingZone && editorState.newZone ?
                     <div className="zone-overlay new-zone" style={{
-                        "left": editorState.newZone.left,
-                        "top": editorState.newZone.top,
-                        "height": editorState.newZone.height,
-                        "width": editorState.newZone.width
+                        "left": (editorState.newZone.left * 100).toFixed(2) + "%",
+                        "top": (editorState.newZone.top * 100).toFixed(2) + "%",
+                        "height": (editorState.newZone.height * 100).toFixed(2) + "%",
+                        "width": (editorState.newZone.width * 100).toFixed(2) + "%"
                     }}/>
                     : null
             }
@@ -628,12 +651,12 @@ class ZoneEditor extends React.Component {
                 : null
             }
             {
-                editorState.selectedZone && editorState.isEditingZone ?
+                editorState.selectedZone && editorState.isEditingZone && editorState.imageMaxWidth && editorState.imageMaxHeight ?
                     <Popover
                         id="zone-popover"
                         placement="right"
-                        positionLeft={editorState.selectedZone.left + editorState.selectedZone.width}
-                        positionTop={editorState.selectedZone.top}
+                        positionLeft={(editorState.selectedZone.left + editorState.selectedZone.width) * editorState.imageMaxWidth}
+                        positionTop={editorState.selectedZone.top* editorState.imageMaxHeight}
                         title="Zone Details"
                     >
                         <FormControl type="text" placeholder="Name" className="form-control" value={editorState.selectedZone.name} onChange={this.zoneNameChanged.bind(this)}/>
@@ -691,10 +714,10 @@ class Zone  extends React.Component {
 
     render() {
         return <div className= {classNames({'zone-overlay': true, 'selected': this.props.selected})} style={{
-                "left": this.props.zone.left,
-                "top": this.props.zone.top,
-                "height": this.props.zone.height,
-                "width": this.props.zone.width,
+                "left": (this.props.zone.left * 100).toFixed(3) + "%",
+                "top": (this.props.zone.top * 100).toFixed(3) + "%",
+                "height": (this.props.zone.height * 100).toFixed(3) + "%",
+                "width": (this.props.zone.width * 100).toFixed(3) + "%",
             }}
             onMouseMove={this.onMouseMove.bind(this)}
             onMouseUp={this.onMouseUp.bind(this)}
