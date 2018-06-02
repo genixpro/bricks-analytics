@@ -63,15 +63,21 @@ class ZoneEditor extends React.Component {
 
     onMouseDown(evt) {
         const editorState = this.props.editorState || {};
-        if (!editorState.isEditingZone) {
+        if (editorState.isCreatingZone) {
+            // treat like a mouse up
+            this.onMouseUp(evt);
+        }
+        else if (!editorState.isEditingZone) {
             // Start a new rectangle
             this.setState({
                 isCreatingZone: true,
                 isEditingZone: false,
-                startX: evt.nativeEvent.offsetX,
-                startY: evt.nativeEvent.offsetY,
-                dragX: evt.nativeEvent.offsetX,
-                dragY: evt.nativeEvent.offsetY
+                zoneStartX: evt.nativeEvent.offsetX,
+                zoneStartY: evt.nativeEvent.offsetY,
+                startX: evt.nativeEvent.pageX,
+                startY: evt.nativeEvent.pageY,
+                dragX: evt.nativeEvent.pageX,
+                dragY: evt.nativeEvent.pageY
             });
         }
         else {
@@ -88,8 +94,8 @@ class ZoneEditor extends React.Component {
         if (editorState.isCreatingZone && !editorState.isEditingZone) {
             // Start a new rectangle
             this.setState({
-                dragX: evt.nativeEvent.offsetX,
-                dragY: evt.nativeEvent.offsetY
+                dragX: evt.nativeEvent.pageX,
+                dragY: evt.nativeEvent.pageY
             });
         }
         else if (editorState.isDraggingZone)
@@ -102,21 +108,34 @@ class ZoneEditor extends React.Component {
 
             newState.selectedZone.left = editorState.zoneStartX + (newState.dragX - editorState.startX);
             newState.selectedZone.top = editorState.zoneStartY + (newState.dragY - editorState.startY);
+
+            // Make sure the zone stays within bounds
+            const maxWidth = document.getElementById('zone-editor-image').getBoundingClientRect().width;
+            const maxHeight = document.getElementById('zone-editor-image').getBoundingClientRect().height;
+
+            newState.selectedZone.left = Math.max(newState.selectedZone.left, 0);
+            newState.selectedZone.left = Math.min(newState.selectedZone.left, maxWidth - newState.selectedZone.width);
+
+            newState.selectedZone.top = Math.max(newState.selectedZone.top, 0);
+            newState.selectedZone.top = Math.min(newState.selectedZone.top, maxHeight - newState.selectedZone.height);
+
+            // Compute the bottom
             newState.selectedZone.right = newState.selectedZone.left + newState.selectedZone.width;
             newState.selectedZone.bottom = newState.selectedZone.top + newState.selectedZone.height;
 
+            // Snap to any other zones as needed
             const snapPoints = this.findSnapPoints(newState.selectedZone);
-            if (snapPoints.left) {
+            if (!_.isUndefined(snapPoints.left)) {
                 newState.selectedZone.left = snapPoints.left;
             }
-            else if (snapPoints.right) {
+            else if (!_.isUndefined(snapPoints.right)) {
                 newState.selectedZone.left = snapPoints.right - newState.selectedZone.width;
             }
 
-            if (snapPoints.top) {
+            if (!_.isUndefined(snapPoints.top)) {
                 newState.selectedZone.top = snapPoints.top;
             }
-            else if (snapPoints.bottom) {
+            else if (!_.isUndefined(snapPoints.bottom)) {
                 newState.selectedZone.top = snapPoints.bottom - newState.selectedZone.height;
             }
 
@@ -135,7 +154,7 @@ class ZoneEditor extends React.Component {
 
             let xDisplacement = (newState.dragX - editorState.startX);
             let yDisplacement = (newState.dragY - editorState.startY);
-            let zoneMinimumSize = 10;
+            let zoneMinimumSize = 20;
 
             if (editorState.zoneResizingDirection === 'top')
             {
@@ -145,7 +164,7 @@ class ZoneEditor extends React.Component {
             }
             else if (editorState.zoneResizingDirection === 'bottom')
             {
-                yDisplacement = Math.max(yDisplacement, -editorState.zoneStartHeight-zoneMinimumSize);
+                yDisplacement = Math.max(yDisplacement, -editorState.zoneStartHeight+zoneMinimumSize);
                 newState.selectedZone.bottom = editorState.zoneStartY + yDisplacement;
                 newState.selectedZone.height = editorState.zoneStartHeight + yDisplacement;
             }
@@ -157,36 +176,36 @@ class ZoneEditor extends React.Component {
             }
             else if (editorState.zoneResizingDirection === 'right')
             {
-                xDisplacement = Math.max(xDisplacement, -editorState.zoneStartWidth-zoneMinimumSize);
+                xDisplacement = Math.max(xDisplacement, -editorState.zoneStartWidth+zoneMinimumSize);
                 newState.selectedZone.right = editorState.zoneStartX + xDisplacement;
                 newState.selectedZone.width = editorState.zoneStartWidth + xDisplacement;
             }
 
             const snapPoints = this.findSnapPoints(newState.selectedZone);
-            console.log(snapPoints);
-            if (editorState.zoneResizingDirection === 'top' && snapPoints.top)
+
+            if (editorState.zoneResizingDirection === 'top' && !_.isUndefined(snapPoints.top))
             {
                 const snapDisplacement = snapPoints.top - newState.selectedZone.top;
-                newState.selectedZone.top = snapPoints.top;
                 newState.selectedZone.height = newState.selectedZone.height - snapDisplacement;
+                newState.selectedZone.top = snapPoints.top;
             }
-            else if (editorState.zoneResizingDirection === 'bottom' && snapPoints.bottom)
+            else if (editorState.zoneResizingDirection === 'bottom' && !_.isUndefined(snapPoints.bottom))
             {
                 const snapDisplacement = snapPoints.bottom - newState.selectedZone.bottom;
-                newState.selectedZone.bottom = snapPoints.bottom;
                 newState.selectedZone.height = newState.selectedZone.height + snapDisplacement;
+                newState.selectedZone.bottom = snapPoints.bottom;
             }
-            else if (editorState.zoneResizingDirection === 'left' && snapPoints.left)
+            else if (editorState.zoneResizingDirection === 'left' && !_.isUndefined(snapPoints.left))
             {
                 const snapDisplacement = snapPoints.left - newState.selectedZone.left;
-                newState.selectedZone.left = snapPoints.left;
                 newState.selectedZone.width = newState.selectedZone.width - snapDisplacement;
+                newState.selectedZone.left = snapPoints.left;
             }
-            else if (editorState.zoneResizingDirection === 'right' && snapPoints.right)
+            else if (editorState.zoneResizingDirection === 'right' && !_.isUndefined(snapPoints.right))
             {
                 const snapDisplacement = snapPoints.right - newState.selectedZone.right;
-                newState.selectedZone.right = snapPoints.right;
                 newState.selectedZone.width = newState.selectedZone.width + snapDisplacement;
+                newState.selectedZone.right = snapPoints.right;
             }
 
             this.setState(newState);
@@ -206,7 +225,7 @@ class ZoneEditor extends React.Component {
         let bottomSnapPoints = [];
         this.props.zones.forEach((zone) =>
         {
-            if (zone !== snapZone) {
+            if (zone.id !== snapZone.id) {
                 const hasVerticalOverlap = (zone.top > snapZone.top && zone.top < snapZone.bottom)
                     || (zone.bottom > snapZone.top && zone.bottom < snapZone.bottom)
                     || (snapZone.top > zone.top && snapZone.top < zone.bottom)
@@ -293,6 +312,38 @@ class ZoneEditor extends React.Component {
             }
         });
 
+        // Add in snap points for the outer edges of the map
+        const maxWidth = document.getElementById('zone-editor-image').getBoundingClientRect().width;
+        const maxHeight = document.getElementById('zone-editor-image').getBoundingClientRect().height;
+
+        if (snapZone.left < snapDistance)
+        {
+            leftSnapPoints.push({
+                left: 0,
+                distance: snapZone.left
+            })
+        }
+        if (snapZone.top < snapDistance)
+        {
+            topSnapPoints.push({
+                top: 0,
+                distance: snapZone.top
+            })
+        }
+        if ((maxWidth - snapZone.right) < snapDistance)
+        {
+            rightSnapPoints.push({
+                right: maxWidth,
+                distance: (maxWidth - snapZone.right)
+            })
+        }
+        if ((maxHeight - snapZone.bottom) < snapDistance)
+        {
+            bottomSnapPoints.push({
+                bottom: maxHeight,
+                distance: (maxHeight - snapZone.bottom)
+            })
+        }
 
         // Now we choose the best snap in each category
         const bestLeftSnap = _.min(leftSnapPoints, (snap) => snap.distance);
@@ -326,35 +377,42 @@ class ZoneEditor extends React.Component {
     onMouseUp(evt) {
         const editorState = this.props.editorState || {};
         if (editorState.isCreatingZone && !editorState.isEditingZone) {
-            const newState = {
-                isCreatingZone: false,
-                isEditingZone: true,
-                dragX: evt.nativeEvent.offsetX,
-                dragY: evt.nativeEvent.offsetY,
-                editorX: evt.nativeEvent.offsetX,
-                editorY: evt.nativeEvent.offsetY
-            };
+            const newState = editorState;
+            newState.dragX = evt.nativeEvent.pageX;
+            newState.dragY = evt.nativeEvent.pageY;
+            newState.isCreatingZone = false;
+            newState.isEditingZone = true;
+
+            const zones = this.props.zones;
+            const newZone = this.computeNewZoneCoordinates(this.props.editorState);
+            newZone.id = this.getNextZoneId();
+            zones.push(newZone);
+            this.updateZones(zones);
+
+            newState.selectedZone = newZone;
 
             // Start a new rectangle
-            this.setState(newState, ()=>
-            {
-                const zones = this.props.zones;
-
-                const newZone = this.computeZoneCoordinates(this.props.editorState);
-                newZone.id = this.getNextZoneId();
-                zones.push(newZone);
-                this.updateZones(zones);
-            });
+            this.setState(newState);
         }
         else if (editorState.isDraggingZone)
         {
+            // Copy values into official record
+            const zone = _.findWhere(this.props.zones, {id: this.props.editorState.selectedZone.id});
+            Object.keys(zone).forEach((key) => zone[key] = this.props.editorState.selectedZone[key]);
+            this.updateZones(this.props.zones);
+
             this.setState({
                 isDraggingZone: false,
-                isEditingZone: true
+                isEditingZone: true,
             });
         }
         else if (editorState.isResizingZone)
         {
+            // Copy values into official record
+            const zone = _.findWhere(this.props.zones, {id: this.props.editorState.selectedZone.id});
+            Object.keys(zone).forEach((key) => zone[key] = this.props.editorState.selectedZone[key]);
+            this.updateZones(this.props.zones);
+
             this.setState({
                 isResizingZone: false,
                 isEditingZone: true
@@ -362,6 +420,11 @@ class ZoneEditor extends React.Component {
         }
         else if (editorState.isEditingZone)
         {
+            // Copy values into official record
+            const zone = _.findWhere(this.props.zones, {id: this.props.editorState.selectedZone.id});
+            Object.keys(zone).forEach((key) => zone[key] = this.props.editorState.selectedZone[key]);
+            this.updateZones(this.props.zones);
+
             this.setState({
                 isResizingZone: false,
                 isEditingZone: false,
@@ -371,22 +434,59 @@ class ZoneEditor extends React.Component {
     }
 
 
-    computeZoneCoordinates(newState) {
+    computeNewZoneCoordinates(newState) {
         let width = Math.abs(newState.startX - newState.dragX);
         let height = Math.abs(newState.startY - newState.dragY);
-        let left = Math.min(newState.startX, newState.dragX);
-        let top = Math.min(newState.startY, newState.dragY);
+        let left = Math.min(newState.zoneStartX, newState.zoneStartX + (newState.dragX - newState.startX));
+        let top = Math.min(newState.zoneStartY, newState.zoneStartY + (newState.dragY - newState.startY));
 
-        if (width < 10)
+        // Make sure the zone stays within bounds
+        const maxWidth = document.getElementById('zone-editor-image').getBoundingClientRect().width;
+        const maxHeight = document.getElementById('zone-editor-image').getBoundingClientRect().height;
+
+        width = Math.min(width, maxWidth - left);
+        height = Math.min(height, maxHeight - top);
+
+        if (width < 20)
         {
-            width += (10 - width);
+            width = 20;
         }
-        if (height < 10)
+        if (height < 20)
         {
-            height += (10 - height);
+            height = 20;
         }
 
-        return {left, top, width, height, bottom: top+height, right: left+width};
+        const newZone = {id: 'new', left, top, width, height, bottom: top+height, right: left+width};
+
+        // Snap to any other zones as needed
+        const snapPoints = this.findSnapPoints(newZone);
+
+        if (!_.isUndefined(snapPoints.left)) {
+            const snapDisplacement = snapPoints.left - newZone.left;
+            newZone.width = newZone.width - snapDisplacement;
+            newZone.left = snapPoints.left;
+        }
+        else if (!_.isUndefined(snapPoints.right)) {
+            const snapDisplacement = snapPoints.right - newZone.right;
+            newZone.width = newZone.width + snapDisplacement;
+            newZone.left = snapPoints.right - newZone.width;
+        }
+
+        if (!_.isUndefined(snapPoints.top)) {
+            const snapDisplacement = snapPoints.top - newZone.top;
+            newZone.height = newZone.height - snapDisplacement;
+            newZone.top = snapPoints.top;
+        }
+        else if (!_.isUndefined(snapPoints.bottom)) {
+            const snapDisplacement = snapPoints.bottom - newZone.bottom;
+            newZone.height = newZone.height + snapDisplacement;
+            newZone.top = snapPoints.bottom - newZone.height;
+        }
+
+        newZone.right = newZone.left + newZone.width;
+        newZone.bottom = newZone.top + newZone.height;
+
+        return newZone;
     }
 
 
@@ -474,7 +574,7 @@ class ZoneEditor extends React.Component {
         const editorState = this.props.editorState || {};
         newState = _.extend({}, editorState, newState);
         if (newState.dragX) {
-            newState.newZone= this.computeZoneCoordinates(newState);
+            newState.newZone= this.computeNewZoneCoordinates(newState);
         }
         else {
             newState.newZone= null;
@@ -493,16 +593,16 @@ class ZoneEditor extends React.Component {
         
         const editorState = this.props.editorState || {};
 
-        return <div className="zone-editor">
+        return <div id={'zone-editor'} className="zone-editor">
             <div
                 onMouseDown={this.onMouseDown.bind(this)}
                 onMouseUp={this.onMouseUp.bind(this)}
                 onMouseMove={this.onMouseMove.bind(this)}>
-                <img src={this.props.src} draggable={false}/>
+                <img id={"zone-editor-image"} src={this.props.src} draggable={false}/>
             </div>
             {
                 editorState.isCreatingZone && editorState.newZone ?
-                    <div className="zone-overlay" style={{
+                    <div className="zone-overlay new-zone" style={{
                         "left": editorState.newZone.left,
                         "top": editorState.newZone.top,
                         "height": editorState.newZone.height,
@@ -584,11 +684,7 @@ class Zone  extends React.Component {
 
     onMouseUp(event)
     {
-        if (event.button === 0)
-        {
-            this.props.onZoneMouseUp(event);
-            event.preventDefault();
-        }
+        this.props.onZoneMouseUp(event);
     }
 
 

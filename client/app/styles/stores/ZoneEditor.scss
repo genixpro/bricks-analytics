@@ -92,17 +92,21 @@
     }
   }
 
+  .zone-overlay.new-zone {
+    pointer-events: none;
+  }
+
   .zone-overlay:hover
   {
     background-color: #3032bf;
-    border: 4px solid grey;
+    border: 2px solid grey;
   }
 
   .zone-overlay.selected,
   .zone-overlay.selected:hover
   {
     background-color: #5b5de3;
-    border: 5px solid darkgrey;
+    border: 2px solid darkgrey;
   }
 
   .popover-basic#zone-popover
