@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "VisitSummary": {
+      "title": "VisitSummary",
+      "description": "This object contains a summary of a persons visit to a store.",
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "number"
+        },
+        "visitorId": {
+          "type": "string"
+        },
+        "zones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "zoneId": {"type": "number"},
+              "timeSpentSeconds": {"type": "number"},
+              "timeSpentPercentage": {"type": "number"},
+            }
+          }
+        },
+        "concentrationZoneId": {"type": "string"},
+        "timeSpentSeconds": {"type": "string"},
+        "track": {
+          "type": "array",
+          "items": {"$ref": "Coordinate.json#/definitions/Coordinate"}
+        }
+      }
+    }
+  },
+  "$ref": "#/definitions/VisitSummary"
+}
+

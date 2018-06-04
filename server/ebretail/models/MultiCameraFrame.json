@@ -9,6 +9,9 @@
         "storeId": {
           "type": "number"
         },
+        "timestamp": {
+          "type": "string"
+        },
         "people": {
           "type": "array",
           "items": {

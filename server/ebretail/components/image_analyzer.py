@@ -183,6 +183,7 @@ class ImageAnalyzer:
             and produces a single MultiCameraFrame object, indicating where it thinks all the people are."""
 
         multiCameraFrame = {
+            "timestamp": singleCameraFrames[0]['timestamp'],
             "people": []
         }
 
@@ -569,11 +570,18 @@ class ImageAnalyzer:
             :param storeConfiguration: The store configuration
             :return: (timeSeriesFrame, state)
         """
+        pprint(state)
+
         if 'tracker' not in state:
-            state['tracker'] = Sort(max_age=5, min_hits=3)
+            state['tracker'] = Sort(max_age=2, min_hits=4)
+
+        if 'people' not in state:
+            state['people'] = {}
+
+        trackerBoxSize = 100
 
         tracker = state['tracker']
-        detections = [[person['x']-10, person['y']-10, person['x']+10, person['y']+10, 1.0] for person in multiCameraFrame['people']]
+        detections = [[person['x']-trackerBoxSize/2, person['y']-trackerBoxSize/2, person['x']+trackerBoxSize/2, person['y']+trackerBoxSize/2, 1.0] for person in multiCameraFrame['people']]
 
         tracked = tracker.update(np.array(detections))
 
@@ -581,11 +589,17 @@ class ImageAnalyzer:
             'people': []
         }
 
+        # Set all existing people as invisible
+        for personKey, person in state['people'].items():
+            person['state'] = 'hidden'
+
         for personIndex, boundingBox in enumerate(tracked):
+            visitorId = str(multiCameraFrame['storeId']) + "-" + str(boundingBox[4])
             newPersonData = {
-                'visitorId': multiCameraFrame['storeId'] + boundingBox[4],
+                'visitorId': visitorId,
                 "x": boundingBox[0]/2 + boundingBox[2]/2,
-                "y": boundingBox[1]/2 + boundingBox[3]/2
+                "y": boundingBox[1]/2 + boundingBox[3]/2,
+                "timestamp": multiCameraFrame['timestamp']
             }
 
             relX = newPersonData["x"] / storeConfiguration['storeMap']['width']
@@ -597,10 +611,86 @@ class ImageAnalyzer:
                     newPersonData['zone'] = zone['id']
                     break
 
+            if visitorId in state['people']:
+                newPersonData['state'] = 'visible'
+            else:
+                newPersonData['state'] = 'entered'
+
+            state['people'][visitorId] = newPersonData
             timeSeriesFrame['people'].append(newPersonData)
+
+        # Anyone remaining, we assume is deleted
+        for personKey, person in state['people'].items():
+            if person['state'] == 'hidden':
+                person['state'] = 'exited'
 
         return timeSeriesFrame, state
 
+
+    def createVisitSummary(self, visitorId, timeSeriesFrames, storeConfiguration):
+        """
+            :param visitorId: The visitor id to produce the summary for.
+            :param timeSeriesFrames: An array containing all of the time series frames which contained the visitor
+            :param storeConfiguration: The store configuration
+            :return: (timeSeriesFrame, state)
+        :return:
+        """
+        visitSummary = {
+            "storeId": storeConfiguration['storeId'],
+            "visitorId": storeConfiguration['visitorId']
+        }
+
+        # Compute the track
+        visitSummary['track'] = []
+
+        for frame in timeSeriesFrames:
+            for person in frame['people']:
+                if person['visitorId'] == visitorId:
+                    visitSummary['track'].append({
+                        "x": person['x'],
+                        "y": person['y'],
+                        "zoneId": person['zone'],
+                        "timestamp": person['timestamp']
+                    })
+
+        # Now we compute the amount of time spent in each zone
+        # for each track.
+        totalTime = visitSummary['track'][-1]['timestamp'] - visitSummary['track'][0]['timestamp']
+        visitSummary['timeSpentSeconds'] = totalTime
+
+        zoneMap = {}
+
+        zones = []
+        for zone in storeConfiguration['zones']:
+            newZone = {
+                "zoneId": zone['zoneId'],
+                "timeSpentSeconds": 0,
+                "timeSpentPercentage": 0
+            }
+            zones.append(newZone)
+            zoneMap[zone['zoneId']] = newZone
+
+        # Compute the time spent in each zone
+        for pointIndex, point in enumerate(visitSummary['track'][:-1]):
+            currentPoint = visitSummary['track'][pointIndex]
+            nextPoint = visitSummary['track'][pointIndex + 1]
+
+            # Compute the time between the next entry and this one
+            elapsed = nextPoint['timestamp'] - currentPoint['timestamp']
+
+            # Allocate half the time to the current zone, half the time to the next zone
+            zoneMap[currentPoint['zoneId']]['timeSpentSeconds'] += elapsed/2
+            zoneMap[nextPoint['zoneId']]['timeSpentSeconds'] += elapsed/2
+
+        # Now compute the percentage time in each zone
+        max = 0
+        for zone in zones:
+            zone['timeSpentPercentage'] = zone['timeSpentSeconds'] / totalTime
+            if zone['timeSpentPercentage'] > max:
+                max = zone['timeSpentPercentage']
+                visitSummary['concentrationZoneId'] = zone['zoneId']
+
+        return visitSummary
 
     @staticmethod
     def sharedInstance():

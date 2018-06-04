@@ -6,13 +6,23 @@
       "description": "This object represents a MultiCameraFrame after it has been processed by time-series analysis with previous frames.",
       "type": "object",
       "properties": {
+        "storeId": {
+          "type": "number"
+        },
+        "timestamp": {
+          "type": "string"
+        },
         "people": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "visitId": {
+              "visitorId": {
                 "type": "string"
+              },
+              "state": {
+                "type": "string",
+                "enum": ["entered", "visible", "hidden", "exited"]
               },
               "cameraIds": {
                 "type": "array",
