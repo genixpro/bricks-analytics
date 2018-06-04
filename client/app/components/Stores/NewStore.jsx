@@ -36,6 +36,7 @@ const NewStore = React.createClass({
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((position) => {
                 var geolocation = {
+                    key: "center",
                     lat: position.coords.latitude,
                     lng: position.coords.longitude
                 };

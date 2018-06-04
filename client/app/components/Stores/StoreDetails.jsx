@@ -144,7 +144,7 @@ class StoreDetails extends React.Component {
 
                                     <ZoneEditor
                                         src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout?" + this.props.editorState.storeLayoutCacheBreaker}
-                                        zones={this.props.store.zones}
+                                        zones={this.props.store.zones ? this.props.store.zones : []}
                                         editorState={this.props.editorState ? this.props.editorState.zoneEditor : {}}
                                         updateZones={this.updateZones.bind(this)}
                                         updateEditorState={this.updateZoneEditorState.bind(this)}
