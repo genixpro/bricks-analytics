@@ -43,6 +43,9 @@ def drawDebugStoreMap(storeMap, points, textScale=0.5, boxSize=25):
         elif 'id' in point:
             ids = [point['id']]
 
+        if 'zone' in point:
+            ids += ['zone-' + str(point['zone'])]
+
         color = (0, 255, 0)
         if 'color' in point:
             color = point['color']
@@ -157,7 +160,17 @@ if __name__ == '__main__':
 
                 positions.append({"x": position[0], "y": position[1], "id": str(x) + ","+str(y), "color": color})
 
-
+    storeConfiguration = {
+        "storeId": 1,
+        "name": "Test Store",
+        "address":  "20 Camden Street, Toronto, Ontario",
+        "storeMap": {
+            "height": data['storeMap']['height'],
+            "width": data['storeMap']['width']
+        },
+        "cameras": singleCameraConfigurations,
+        "zones": data['zones']
+    }
 
     debugMap = drawDebugStoreMap(storeMapImageArray, positions, textScale=0.50)
     cv2.imshow('store-map-test', debugMap)
@@ -221,7 +234,7 @@ if __name__ == '__main__':
     currentState = {}
     timeSeriesFrames = []
     for frameIndex, multiCameraFrame in enumerate(multiCameraFrames):
-        timeSeriesFrame, state = imageAnalyzer.processMultiCameraFrameTimeSeries(multiCameraFrame, currentState)
+        timeSeriesFrame, state = imageAnalyzer.processMultiCameraFrameTimeSeries(multiCameraFrame, currentState, storeConfiguration)
         currentState = state
         timeSeriesFrames.append(timeSeriesFrame)
 

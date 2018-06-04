@@ -23,6 +23,9 @@
               },
               "y": {
                 "type": "number"
+              },
+              "zone": {
+                "type": "number"
               }
             }
           }

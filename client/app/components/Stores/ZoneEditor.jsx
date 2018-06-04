@@ -514,11 +514,12 @@ class ZoneEditor extends React.Component {
 
 
 
-    onChangeZoneType(newType, event) {
-        this.setState({
-            zoneType: newType
-        });
-        event.preventDefault();
+    onChangeZoneType(newType) {
+        const editorState = this.props.editorState || {};
+        const zone = _.findWhere(this.props.zones, {id: editorState.selectedZone.id});
+        zone.zoneType = newType.value;
+        this.updateZones(this.props.zones);
+        this.setState({selectedZone: zone});
     }
 
     preventEventHandler(e) {
@@ -527,16 +528,33 @@ class ZoneEditor extends React.Component {
 
 
     onZoneMouseDown(zone, event) {
-        this.setState({
-            isDraggingZone: true,
-            selectedZone: zone,
-            startX: event.nativeEvent.pageX,
-            startY: event.nativeEvent.pageY,
-            zoneStartX: zone.left,
-            zoneStartY: zone.top,
-            zoneStartWidth: zone.width,
-            zoneStartHeight: zone.height
-        })
+        const editorState = this.props.editorState || {};
+        if (editorState.isDraggingZone || editorState.isEditingZone)
+        {
+            this.setState({
+                isDraggingZone: false,
+                selectedZone: zone,
+                startX: event.nativeEvent.pageX,
+                startY: event.nativeEvent.pageY,
+                zoneStartX: zone.left,
+                zoneStartY: zone.top,
+                zoneStartWidth: zone.width,
+                zoneStartHeight: zone.height
+            })
+        }
+        else
+        {
+            this.setState({
+                isDraggingZone: true,
+                selectedZone: zone,
+                startX: event.nativeEvent.pageX,
+                startY: event.nativeEvent.pageY,
+                zoneStartX: zone.left,
+                zoneStartY: zone.top,
+                zoneStartWidth: zone.width,
+                zoneStartHeight: zone.height
+            })
+        }
     }
 
     onZoneResizeMouseDown(zone, direction, event) {
@@ -608,7 +626,7 @@ class ZoneEditor extends React.Component {
         const editorState = this.props.editorState || {};
         const zone = _.findWhere(this.props.zones, {id: editorState.selectedZone.id});
         zone.name = event.target.value;
-        this.updateZones(zones);
+        this.updateZones(this.props.zones);
         this.setState({selectedZone: zone})
     }
 
@@ -683,7 +701,7 @@ class ZoneEditor extends React.Component {
                         <br/>
                         <Select
                             options={options}
-                            value={editorState.zoneType}
+                            value={editorState.selectedZone.zoneType}
                             onChange={this.onChangeZoneType.bind(this)}
                             style={{"width": "200px"}}
                         />

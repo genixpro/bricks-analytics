@@ -560,12 +560,13 @@ class ImageAnalyzer:
             return (None, state, debugImage)
 
 
-    def processMultiCameraFrameTimeSeries(self, multiCameraFrame, state):
+    def processMultiCameraFrameTimeSeries(self, multiCameraFrame, state, storeConfiguration):
         """
             This method is used to process the sequence of multi-camera-frame objects. It creates TimeSeriesFrame objects.
 
             :param multiCameraFrame: The current multi camera frame.
             :param state: The current state of the multi-camera-frame system. This contains arbitrary data which can be pickled in python
+            :param storeConfiguration: The store configuration
             :return: (timeSeriesFrame, state)
         """
         if 'tracker' not in state:
@@ -586,6 +587,15 @@ class ImageAnalyzer:
                 "x": boundingBox[0]/2 + boundingBox[2]/2,
                 "y": boundingBox[1]/2 + boundingBox[3]/2
             }
+
+            relX = newPersonData["x"] / storeConfiguration['storeMap']['width']
+            relY = newPersonData["y"] / storeConfiguration['storeMap']['height']
+
+            # Determine what zone this person is located within
+            for zone in storeConfiguration['zones']:
+                if relX >= zone['left'] and relX <= zone['right'] and relY >= zone['top'] and relY <= zone['bottom']:
+                    newPersonData['zone'] = zone['id']
+                    break
 
             timeSeriesFrame['people'].append(newPersonData)
 

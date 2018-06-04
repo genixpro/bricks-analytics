@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "Zone": {
+      "title": "Zone",
+      "description": "A zone within a store.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number"
+        },
+        "left": {
+          "type": "number"
+        },
+        "top": {
+          "type": "number"
+        },
+        "right": {
+          "type": "number"
+        },
+        "bottom": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "zoneType": {
+          "type": "string",
+          "enum": ["checkout", "isle", "entry", "shelving"]
+        }
+      }
+    }
+  },
+  "$ref": "#/definitions/Zone"
+}
