@@ -601,14 +601,14 @@ class ImageAnalyzer:
             visitorId = str(multiCameraFrame['storeId']) + "-" + str(boundingBox[4])
             newPersonData = {
                 'visitorId': visitorId,
-                "x": boundingBox[0]/2 + boundingBox[2]/2,
-                "y": boundingBox[1]/2 + boundingBox[3]/2,
+                "x": (boundingBox[0]/2 + boundingBox[2]/2) / storeConfiguration['storeMap']['width'],
+                "y": (boundingBox[1]/2 + boundingBox[3]/2) / storeConfiguration['storeMap']['height'],
                 "timestamp": multiCameraFrame['timestamp'],
                 "zone": None
             }
 
-            relX = newPersonData["x"] / storeConfiguration['storeMap']['width']
-            relY = newPersonData["y"] / storeConfiguration['storeMap']['height']
+            relX = newPersonData["x"]
+            relY = newPersonData["y"]
 
             # Determine what zone this person is located within
             for zone in storeConfiguration['zones']:

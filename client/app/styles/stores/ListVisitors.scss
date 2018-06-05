@@ -1,0 +1,23 @@
+
+
+
+.storemap-heat-map
+{
+  position: relative;
+  height: 400px;
+  display: inline-block;
+}
+
+.storemap-heat-map img
+{
+  height: 400px;
+}
+
+.storemap-heat-map .heatmap-container
+{
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+}

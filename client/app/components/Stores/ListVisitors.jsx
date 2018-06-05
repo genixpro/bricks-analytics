@@ -4,6 +4,7 @@ import {withRouter, Link} from "react-router-dom";
 import {Stomp} from 'stompjs/lib/stomp.min';
 import axios from "axios/index";
 import _ from 'underscore';
+const ReactHeatmap = require('react-heatmap');
 
 class ListVisitors extends React.Component {
     constructor(props) {
@@ -22,22 +23,41 @@ class ListVisitors extends React.Component {
             url: `/store/${this.props.store._id}/visitors/`
         }).then((response) =>
         {
-            const state = {visitors: response.data};
+            const state = this.state;
+            state.visitors = response.data;
             if (this.props.match && this.props.match.params && this.props.match.params.visitorId)
             {
-                state.visitor =_.findWhere(state.visitors, {visitorId: this.props.match.params.visitorId});
+                axios({
+                    method: 'get',
+                    url: `/store/${this.props.store._id}/visitors/${this.props.match.params.visitorId}`
+                }).then((response) => {
+                    state.visitor = response.data;
+                    state.heatmap = state.visitor.track.map((entry) => {
+                        return {
+                            "x": entry.x * 100,
+                            "y": entry.y * 100,
+                            "value": 5
+                        };
+                    });
+                    this.setState(state);
+                });
             }
-            this.setState(state);
+            else
+            {
+                this.setState(state);
+            }
         });
     }
-
 
     /**
      * Triggered when this component appears on the screen.
      */
-    componentDidMount()
-    {
-        this.reloadVisitorList();
+    componentDidMount() {
+        if (!this.state.visitors)
+        {
+            this.reloadVisitorList();
+        }
+
         this.updateInterval = setInterval(() => this.reloadVisitorList(), 2500);
     }
 
@@ -79,8 +99,17 @@ class ListVisitors extends React.Component {
                     {this.state.visitor &&
                     <Col md={9}>
                         <div className="row">
-                            <h1>{this.state.visitor.visitorId}</h1>
+                            <h1>Visitor {this.state.visitor.visitorId}</h1>
+
+                            <div className={'storemap-heat-map'}>
+                                <img className='store-image' id='storemap-heatmap-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout?" + this.props.editorState.storeLayoutCacheBreaker} />
+                                <div className={'heatmap-container'}>
+                                    <ReactHeatmap max={5} data={this.state.heatmap} unit={'percent'} />
+                                </div>
+                            </div>
+
                         </div>
+
                     </Col>
                     }
                 </Row>

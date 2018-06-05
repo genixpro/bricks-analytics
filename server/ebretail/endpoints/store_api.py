@@ -110,6 +110,6 @@ class RecentVisitors(object):
 
     def get(self):
         id = str(self.request.matchdict['visitorId'])
-        visitor = self.visitors.get(id)
+        visitor = self.visitors.find_one({"visitorId": id})
         return visitor
 
