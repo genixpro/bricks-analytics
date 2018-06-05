@@ -90,7 +90,7 @@ class CameraFrames(object):
     def __init__(self, request, context=None):
         self.request = request
 
-        self.processedImages = request.registry.db.processedImages
+        self.singleCameraFrames = request.registry.db.singleCameraFrames
 
     def __acl__(self):
         return [(Allow, Everyone, 'everything')]
@@ -111,7 +111,7 @@ class CameraFrames(object):
         else:
             query['frameNumber'] = int(self.request.matchdict['frameNumber'])
 
-        image = self.processedImages.find_one(query, sort=sort)
+        image = self.singleCameraFrames.find_one(query, sort=sort)
 
         if image is None:
             return None

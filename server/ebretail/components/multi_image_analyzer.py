@@ -14,6 +14,7 @@ import scipy
 from pprint import pprint
 import scipy.linalg
 import bson.json_util
+from ebretail.components.image_analyzer import ImageAnalyzer
 
 
 class MultiImageAnalyzer:
@@ -31,17 +32,19 @@ class MultiImageAnalyzer:
 
         self.schedulerThread.start()
 
+        self.imageAnalyzer = ImageAnalyzer()
+
     def main(self):
-        imagesCollection = self.db.processedImages
-        framesCollection = self.db.frames
+        singleCameraFramesCollection = self.db.singleCameraFrames
+        multiCameraFramesCollection = self.db.multiCameraFrames
 
         # First, get all the frames which haven't been processed
         try:
-            for change in framesCollection.watch([{'$match': {'operationType': {"$in": ['insert', 'update']}}}]):
+            for change in multiCameraFramesCollection.watch([{'$match': {'operationType': {"$in": ['insert', 'update']}}}]):
                 if 'fullDocument' in change:
                     data = change['fullDocument']
                 else:
-                    data = framesCollection.find_one(change['documentKey'])
+                    data = multiCameraFramesCollection.find_one(change['documentKey'])
 
                 if data['needsUpdate']:
                     if data['frameNumber'] in self.scheduledFrames:
@@ -59,49 +62,29 @@ class MultiImageAnalyzer:
             time.sleep(0.1)
 
 
-    def getLocationInStore(self, pixelX, pixelY):
-        """
-            This method returns the location within the store for a given detection.
-        """
-        pass
-
-    def inverseScreenLocation(self, location, height, rotationMatrix, translationVector, cameraMatrix):
-        # Add in another dimension
-        location = np.array([[location[0]], [location[1]], [1]])
-
-        calibrationPointsSize = 10 # Our calibration checkboard consists of 10cm squares
-
-        # print(rotationMatrix)
-        # print(cameraMatrix)
-
-        tempMatrix = np.matmul(np.matmul(scipy.linalg.inv(rotationMatrix), scipy.linalg.inv(cameraMatrix)),
-                               location)
-        tempMatrix2 = np.matmul(scipy.linalg.inv(rotationMatrix), translationVector)
-
-        s = (height / calibrationPointsSize + tempMatrix2[2][0]) / tempMatrix[2][0]
-
-        final = np.matmul(scipy.linalg.inv(rotationMatrix),
-                          (s * np.matmul(scipy.linalg.inv(cameraMatrix), location) - translationVector))
-
-        return final * calibrationPointsSize
-
     def processFrame(self, frame):
-        imagesCollection = self.db.processedImages
+        singleCameraFramesCollection = self.db.singleCameraFrames
+        multiCameraFramesCollection = self.db.multiCameraFrames
         storesCollection = self.db.stores
-        framesCollection = self.db.frames
 
-        images = imagesCollection.find({"frameNumber": frame['frameNumber']})
+        singleCameraFrames = list(singleCameraFramesCollection.find({"frameNumber": frame['frameNumber']}))
+        currentMultiCameraFrame = multiCameraFramesCollection.find_one({"frameNumber": frame['frameNumber']})
         store = storesCollection.find_one({"_id": frame['storeId']})
-        frame = framesCollection.find_one({"frameNumber": frame['frameNumber']})
 
-        people = []
+        print("about to process")
+        pprint(singleCameraFrames)
+        pprint(store)
 
-        pass # Need to use image analyzer processMultiCameraFrameTimeSeries function.
+        newMultiCameraFrame = self.imageAnalyzer.processMultipleCameraFrames(singleCameraFrames, store['cameras'])
 
-        frame['people'] = people
-        frame['needsUpdate'] = False
+        newMultiCameraFrame['storeId'] = currentMultiCameraFrame['storeId']
+        newMultiCameraFrame['timestamp'] = currentMultiCameraFrame['timestamp']
+        newMultiCameraFrame['frameNumber'] = currentMultiCameraFrame['frameNumber']
+        newMultiCameraFrame['needsUpdate'] = False
 
-        framesCollection.update_one({"_id": frame['_id']}, {"$set": frame})
+        pprint(newMultiCameraFrame)
+
+        multiCameraFramesCollection.update_one({"_id": frame['_id']}, {"$set": newMultiCameraFrame})
 
         amqpChannel = self.getMessagingChannel()
         exchangeId = 'store-frames-' + str(frame['storeId'])

@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     db = pymongo.MongoClient(settings['mongo.uri'])['ebretail']
 
-    db.processedImages.ensureIndex({"frameNumber": 1})
+    db.singleCameraFrames.ensureIndex({"frameNumber": 1})
     db.frames.ensureIndex({"frameNumber": 1})
 
 

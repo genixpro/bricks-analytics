@@ -31,7 +31,7 @@ def register_collector(request):
         # See if there is already a camera with this id
         matchingCamera = None
         for existingCamera in store['cameras']:
-            if camera['id'] == existingCamera['id']:
+            if camera['cameraId'] == existingCamera['cameraId']:
                 matchingCamera = existingCamera
                 break
         if not matchingCamera:
@@ -52,26 +52,25 @@ def collect_images(request):
         This endpoint is used by our main servers to receive images which have been
         processed by the ImageProcessor sub-module.
 
-        So technically speaking we don't always get an image here, we usually just
-        get the bounding boxes and other extracted data, which is stored for further processing.
+        These data received here are SingleCameraFrame objects.
     """
 
-    imageCollection = request.registry.db.processedImages
-    frameCollection = request.registry.db.frames
+    singleCameraFrameCollection = request.registry.db.singleCameraFrames
+    multiCameraFrameCollection = request.registry.db.multiCameraFrames
 
     data = request.json_body
 
     frameNumber = int(datetime.strptime(data['timestamp'], "%Y-%m-%dT%H:%M:%S.%f").timestamp() * 2)
     data['frameNumber'] = frameNumber
-    imageCollection.insert(data)
+    singleCameraFrameCollection.insert(data)
 
-    frameCollection.find_one_and_update({
+    multiCameraFrameCollection.find_one_and_update({
         'frameNumber': frameNumber,
         'storeId': data['storeId']
     }, {'$set': {
         'frameNumber': frameNumber,
         'storeId': data['storeId'],
-        'timeStamp': data['timestamp'],
+        'timestamp': data['timestamp'],
         'needsUpdate': True
     }}, upsert=True)
 

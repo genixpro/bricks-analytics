@@ -118,8 +118,8 @@ class StoreDetails extends React.Component {
                                 <i className="fa fa-upload" />
                                 <img className='store-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout?" + this.props.editorState.storeLayoutCacheBreaker} />
 
-                                {this.props.editorState.frame &&
-                                this.props.editorState.frame.people.map((person) =>
+                                {this.props.frame &&
+                                this.props.frame.people.map((person) =>
                                     <img className="person-location"
                                          src='/img/person.png'
                                          style={{

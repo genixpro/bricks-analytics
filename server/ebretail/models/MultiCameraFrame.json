@@ -12,6 +12,12 @@
         "timestamp": {
           "type": "string"
         },
+        "frameNumber": {
+          "type": "number"
+        },
+        "needsUpdate": {
+          "type": "boolean"
+        },
         "people": {
           "type": "array",
           "items": {

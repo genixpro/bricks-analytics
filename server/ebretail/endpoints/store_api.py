@@ -6,7 +6,7 @@ from pyramid.security import Allow
 from pyramid.security import Everyone
 from ebretail.models.counter import get_next_object_id
 import gridfs
-
+import pymongo
 
 
 @resource(collection_path='/store', path='/store/{id}', cors_origins=('*',), cors_max_age=3600)
@@ -85,3 +85,31 @@ class StoreLayout(object):
         self.storeLayouts.put(layout, **metadata)
 
         return None
+
+
+@resource(collection_path='/store/{storeId}/visitors/', path='/store/{storeId}/visitors/{visitorId}', cors_origins=('*',), cors_max_age=3600, renderer='bson')
+class RecentVisitors(object):
+    def __init__(self, request, context=None):
+        self.request = request
+
+        self.visitors = request.registry.db.visitors
+
+    def __acl__(self):
+        return [(Allow, Everyone, 'everything')]
+
+    def collection_get(self):
+        storeId = int(self.request.matchdict['storeId'])
+        visitors = self.visitors.find(
+            filter={"storeId": storeId},
+            projection=['_id', 'visitorId', 'timestamp'],
+            sort=[("timestamp", pymongo.DESCENDING)],
+            limit=20
+        )
+
+        return list(visitors)
+
+    def get(self):
+        id = str(self.request.matchdict['visitorId'])
+        visitor = self.visitors.get(id)
+        return visitor
+

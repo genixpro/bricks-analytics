@@ -29,7 +29,7 @@ class StoreCameras extends React.Component {
 
         if (this.camera) {
             var headers = {durable: false, "auto-delete": false, exclusive: false};
-            this.cameraSubscription = this.props.messagingClient.subscribe("/exchange/" + this.camera.id, (message) =>
+            this.cameraSubscription = this.props.messagingClient.subscribe("/exchange/" + this.camera.cameraId, (message) =>
             {
                 const body = JSON.parse(message.body);
                 if (body.type === 'image-updated')
@@ -57,7 +57,7 @@ class StoreCameras extends React.Component {
     {
         axios({
             method: 'get',
-            url: `/store/${this.props.store._id}/cameras/${this.camera.id}/frame/current`
+            url: `/store/${this.props.store._id}/cameras/${this.camera.cameraId}/frame/current`
         }).then((response) =>
         {
             this.setState({cameraFrame: response.data});
@@ -86,7 +86,7 @@ class StoreCameras extends React.Component {
     {
         axios({
             method: 'post',
-            url: `/store/${this.props.store._id}/cameras/${this.camera.id}/record`
+            url: `/store/${this.props.store._id}/cameras/${this.camera.cameraId}/record`
         })
     }
 
@@ -229,9 +229,9 @@ class StoreCameras extends React.Component {
                                 {
                                     this.props.store.cameras &&
                                     this.props.store.cameras.map((camera) =>
-                                        <Link key={camera.id} to={"/store/" + this.props.store._id + "/camera/" + camera.id}
-                                           className={"list-group-item " + (camera.id === this.state.selectedCamera ? " active" : "")}>
-                                            <span>{camera.id}</span>
+                                        <Link key={camera.cameraId} to={"/store/" + this.props.store._id + "/camera/" + camera.cameraId}
+                                           className={"list-group-item " + (camera.cameraId === this.state.selectedCamera ? " active" : "")}>
+                                            <span>{camera.cameraId}</span>
                                         </Link>
                                     )
                                 }
@@ -246,7 +246,7 @@ class StoreCameras extends React.Component {
                                     <div className="pull-right">
                                         <div className="label label-success">operating normally</div>
                                     </div>
-                                    <h4 className="m0">{this.camera.id}</h4>
+                                    <h4 className="m0">{this.camera.cameraId}</h4>
                                 </div>
                                 <table className="table">
                                     <tbody>
@@ -284,7 +284,7 @@ class StoreCameras extends React.Component {
                                     </div>
 
                                     <div className="panel-body">
-                                        <img className="live-image" src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/cameras/" + this.camera.id + "/image?" + this.state.cameraImageCacheBuster} />
+                                        <img className="live-image" src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/cameras/" + this.camera.cameraId + "/image?" + this.state.cameraImageCacheBuster} />
                                     </div>
                                 </div>
                             </Col>

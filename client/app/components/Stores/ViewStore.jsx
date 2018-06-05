@@ -11,6 +11,7 @@ import { withProps, branch } from 'recompose';
 import StoreDetails from "./StoreDetails";
 import StoreCameras from "./StoreCameras";
 import StoreImageProcessors from "./StoreImageProcessors";
+import ListVisitors from "./ListVisitors";
 import _ from 'underscore';
 
 
@@ -60,6 +61,10 @@ class ViewStore extends React.Component {
         else if (tab === "3")
         {
             this.props.history.push("/store/" + this.props.match.params.storeId + "/cameras");
+        }
+        else if (tab === "4")
+        {
+            this.props.history.push("/store/" + this.props.match.params.storeId + "/visitors");
         }
     }
 
@@ -125,6 +130,9 @@ class ViewStore extends React.Component {
                             <NavItem eventKey="3" href={"/store/" + this.props.match.params.storeId + "/cameras"}>
                                 Cameras
                             </NavItem>
+                            <NavItem eventKey="4" href={"/store/" + this.props.match.params.storeId + "/visitors"}>
+                                Visitors
+                            </NavItem>
                         </Nav>
 
                         {
@@ -134,6 +142,8 @@ class ViewStore extends React.Component {
                                  <Route path="/store/:storeId/image_processors" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(StoreImageProcessors)} />
                                  <Route path="/store/:storeId/cameras" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(StoreCameras)} />
                                  <Route path="/store/:storeId/camera/:cameraId" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(StoreCameras)} />
+                                 <Route path="/store/:storeId/visitors" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(ListVisitors)} />
+                                 <Route path="/store/:storeId/visitor/:visitorId" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(ListVisitors)} />
                              </div>
                         }
                         { /* END panel */ }

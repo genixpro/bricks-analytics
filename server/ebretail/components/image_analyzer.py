@@ -55,15 +55,14 @@ class ImageAnalyzer:
         self.sm.load()
         self.draw_multi = PersonDraw()
 
-        # Load and setup CNN part detector
-        self.poseSess, self.poseInputs, self.poseOutputs = predict.setup_pose_prediction(self.cfg)
-
         # How frequent does the person detector run
         self.personDetectorFrequency = 1
         self.detectorTrackerMaxDistance = 50
         self.trackerBoxWidth = 30
         self.trackerBoxHeight = 30
         self.trackerMaxAverageDist = 50
+
+        self.poseSess = None
 
         # We need to double check all of the indexes - some of these might not actually be correlated with the correct body parts
         self.keypointNames = [
@@ -389,6 +388,9 @@ class ImageAnalyzer:
             :param debugImage: The image upon which debug information can be written
             :return: (people, state, debugImage)
         """
+        if not self.poseSess:
+            self.poseSess, self.poseInputs, self.poseOutputs = predict.setup_pose_prediction(self.cfg)
+
         if not state:
             state = {}
 
@@ -585,6 +587,8 @@ class ImageAnalyzer:
         tracked = tracker.update(np.array(detections))
 
         timeSeriesFrame = {
+            'storeId': multiCameraFrame['storeId'],
+            'timestamp': multiCameraFrame['timestamp'],
             'people': []
         }
 
@@ -620,11 +624,13 @@ class ImageAnalyzer:
             state['people'][visitorId] = newPersonData
             timeSeriesFrame['people'].append(newPersonData)
 
-        # Anyone remaining, we assume have exited
+        # Anyone remaining, we assume has exited
         for personKey, person in state['people'].items():
             if person['state'] == 'hidden':
                 person['state'] = 'exited'
                 timeSeriesFrame['people'].append(person)
+
+        timeSeriesFrame['visitorIds'] = [person['visitorId'] for person in timeSeriesFrame['people']]
 
         return timeSeriesFrame, state
 

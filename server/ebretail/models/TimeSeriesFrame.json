@@ -12,6 +12,13 @@
         "timestamp": {
           "type": "string"
         },
+        "frameNumber": {
+          "type": "number"
+        },
+        "visitorIds": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
         "people": {
           "type": "array",
           "items": {
