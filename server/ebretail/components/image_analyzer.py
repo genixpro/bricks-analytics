@@ -15,6 +15,7 @@ import scipy
 import scipy.spatial
 import cv2
 import json
+import datetime
 import math
 from datetime import datetime
 import requests
@@ -396,7 +397,7 @@ class ImageAnalyzer:
 
         # Create the tracker if it doesn't exist
         if 'tracker' not in state:
-            state['tracker'] = Sort(max_age=10, min_hits=1.0)
+            state['tracker'] = Sort(max_age=1, min_hits=1.0)
 
         tracker = state['tracker']
 
@@ -570,15 +571,13 @@ class ImageAnalyzer:
             :param storeConfiguration: The store configuration
             :return: (timeSeriesFrame, state)
         """
-        pprint(state)
-
         if 'tracker' not in state:
-            state['tracker'] = Sort(max_age=2, min_hits=4)
+            state['tracker'] = Sort(max_age=5, min_hits=4, mode='euclidean')
 
         if 'people' not in state:
             state['people'] = {}
 
-        trackerBoxSize = 100
+        trackerBoxSize = 500
 
         tracker = state['tracker']
         detections = [[person['x']-trackerBoxSize/2, person['y']-trackerBoxSize/2, person['x']+trackerBoxSize/2, person['y']+trackerBoxSize/2, 1.0] for person in multiCameraFrame['people']]
@@ -591,7 +590,8 @@ class ImageAnalyzer:
 
         # Set all existing people as invisible
         for personKey, person in state['people'].items():
-            person['state'] = 'hidden'
+            if person['state'] != 'exited':
+                person['state'] = 'hidden'
 
         for personIndex, boundingBox in enumerate(tracked):
             visitorId = str(multiCameraFrame['storeId']) + "-" + str(boundingBox[4])
@@ -599,7 +599,8 @@ class ImageAnalyzer:
                 'visitorId': visitorId,
                 "x": boundingBox[0]/2 + boundingBox[2]/2,
                 "y": boundingBox[1]/2 + boundingBox[3]/2,
-                "timestamp": multiCameraFrame['timestamp']
+                "timestamp": multiCameraFrame['timestamp'],
+                "zone": None
             }
 
             relX = newPersonData["x"] / storeConfiguration['storeMap']['width']
@@ -619,10 +620,11 @@ class ImageAnalyzer:
             state['people'][visitorId] = newPersonData
             timeSeriesFrame['people'].append(newPersonData)
 
-        # Anyone remaining, we assume is deleted
+        # Anyone remaining, we assume have exited
         for personKey, person in state['people'].items():
             if person['state'] == 'hidden':
                 person['state'] = 'exited'
+                timeSeriesFrame['people'].append(person)
 
         return timeSeriesFrame, state
 
@@ -637,7 +639,7 @@ class ImageAnalyzer:
         """
         visitSummary = {
             "storeId": storeConfiguration['storeId'],
-            "visitorId": storeConfiguration['visitorId']
+            "visitorId": visitorId
         }
 
         # Compute the track
@@ -653,22 +655,33 @@ class ImageAnalyzer:
                         "timestamp": person['timestamp']
                     })
 
+        # pprint(visitSummary['track'])
+
         # Now we compute the amount of time spent in each zone
         # for each track.
-        totalTime = visitSummary['track'][-1]['timestamp'] - visitSummary['track'][0]['timestamp']
+        # Minimum value is applied here just in case a track was a result of a fleeting detection
+        totalTime = max(0.1, (datetime.strptime(visitSummary['track'][-1]['timestamp'], "%Y-%m-%dT%H:%M:%S.%f") - datetime.strptime(visitSummary['track'][0]['timestamp'], "%Y-%m-%dT%H:%M:%S.%f")).total_seconds())
         visitSummary['timeSpentSeconds'] = totalTime
 
         zoneMap = {}
-
         zones = []
         for zone in storeConfiguration['zones']:
             newZone = {
-                "zoneId": zone['zoneId'],
+                "zoneId": str(zone['id']),
                 "timeSpentSeconds": 0,
                 "timeSpentPercentage": 0
             }
             zones.append(newZone)
-            zoneMap[zone['zoneId']] = newZone
+            zoneMap[str(zone['id'])] = newZone
+
+        # Add in a zone for when a person falls outside a zone
+        nullZone = {
+            "zoneId": 'None',
+            "timeSpentSeconds": 0,
+            "timeSpentPercentage": 0
+        }
+        zoneMap['None'] = nullZone
+        zones.append(nullZone)
 
         # Compute the time spent in each zone
         for pointIndex, point in enumerate(visitSummary['track'][:-1]):
@@ -676,19 +689,19 @@ class ImageAnalyzer:
             nextPoint = visitSummary['track'][pointIndex + 1]
 
             # Compute the time between the next entry and this one
-            elapsed = nextPoint['timestamp'] - currentPoint['timestamp']
+            elapsed = (datetime.strptime(nextPoint['timestamp'], "%Y-%m-%dT%H:%M:%S.%f") - datetime.strptime(currentPoint['timestamp'], "%Y-%m-%dT%H:%M:%S.%f")).total_seconds()
 
             # Allocate half the time to the current zone, half the time to the next zone
-            zoneMap[currentPoint['zoneId']]['timeSpentSeconds'] += elapsed/2
-            zoneMap[nextPoint['zoneId']]['timeSpentSeconds'] += elapsed/2
+            zoneMap[str(currentPoint['zoneId'])]['timeSpentSeconds'] += elapsed/2
+            zoneMap[str(nextPoint['zoneId'])]['timeSpentSeconds'] += elapsed/2
 
         # Now compute the percentage time in each zone
-        max = 0
+        maxZonePercent = 0
         for zone in zones:
             zone['timeSpentPercentage'] = zone['timeSpentSeconds'] / totalTime
-            if zone['timeSpentPercentage'] > max:
-                max = zone['timeSpentPercentage']
-                visitSummary['concentrationZoneId'] = zone['zoneId']
+            if zone['timeSpentPercentage'] > maxZonePercent:
+                maxZonePercent = zone['timeSpentPercentage']
+                visitSummary['concentrationZoneId'] = str(zone['zoneId'])
 
         return visitSummary
 

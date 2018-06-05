@@ -28,6 +28,7 @@ import glob
 import time
 import argparse
 from filterpy.kalman import KalmanFilter
+import math
 
 @jit
 def iou(bb_test,bb_gt):
@@ -131,7 +132,7 @@ class KalmanBoxTracker(object):
     """
     return convert_x_to_bbox(self.kf.x)
 
-def associate_detections_to_trackers(detections,trackers,iou_threshold = 0): #Note Electric Brain has modified this iou threshhold down to 0
+def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0): #Note Electric Brain has modified this iou threshhold down to 0
   """
   Assigns detections to tracked object (both represented as bounding boxes)
 
@@ -143,7 +144,18 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0): #No
 
   for d,det in enumerate(detections):
     for t,trk in enumerate(trackers):
-      iou_matrix[d,t] = iou(det,trk)
+      if mode == 'iou':
+        iou_matrix[d,t] = iou(det,trk)
+      elif mode == 'euclidean':
+        cx1 = det[0]/2 + det[2]/2
+        cy1 = det[1]/2 + det[3]/2
+
+        cx2 = trk[0]/2 + trk[2]/2
+        cy2 = trk[1]/2 + trk[3]/2
+
+        dist = math.sqrt((cx2-cx1)*(cx2-cx1) + (cy2-cy1)*(cy2-cy1))
+        iou_matrix[d,t] = -dist
+
   matched_indices = linear_assignment(-iou_matrix)
 
   unmatched_detections = []
@@ -158,11 +170,12 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0): #No
   #filter out matched with low IOU
   matches = []
   for m in matched_indices:
-    if(iou_matrix[m[0],m[1]]<iou_threshold):
+    if(iou_matrix[m[0],m[1]]<iou_threshold and mode == 'iou'):
       unmatched_detections.append(m[0])
       unmatched_trackers.append(m[1])
     else:
       matches.append(m.reshape(1,2))
+
   if(len(matches)==0):
     matches = np.empty((0,2),dtype=int)
   else:
@@ -173,7 +186,7 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0): #No
 
 
 class Sort(object):
-  def __init__(self,max_age=1,min_hits=3):
+  def __init__(self,max_age=1,min_hits=3, mode='iou'):
     """
     Sets key parameters for SORT
     """
@@ -181,6 +194,7 @@ class Sort(object):
     self.min_hits = min_hits
     self.trackers = []
     self.frame_count = 0
+    self.mode = mode
 
   def update(self,dets):
     """
@@ -204,7 +218,7 @@ class Sort(object):
     trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
     for t in reversed(to_del):
       self.trackers.pop(t)
-    matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(dets,trks)
+    matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(dets,trks, self.mode)
 
     #update matched trackers with assigned detections
     for t,trk in enumerate(self.trackers):
@@ -217,12 +231,10 @@ class Sort(object):
         trk = KalmanBoxTracker(dets[i,:])
         self.trackers.append(trk)
 
-    print(self.trackers)
-
     i = len(self.trackers)
     for trk in reversed(self.trackers):
         d = trk.get_state()[0]
-        if((trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits)):
+        if((trk.hits >= self.min_hits or self.frame_count <= self.min_hits)): # ELECTRIC BRAIN MODIFIED THIS LINE
           ret.append(np.concatenate((d,[trk.id+1])).reshape(1,-1)) # +1 as MOT benchmark requires positive
         i -= 1
         #remove dead tracklet

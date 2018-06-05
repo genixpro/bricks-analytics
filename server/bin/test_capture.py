@@ -256,17 +256,39 @@ class CaptureTest:
 
         return multiCameraFrames
 
+    def frameHasVisitor(self, timeSeriesFrame, visitorId):
+        hasPerson = False
+        for person in timeSeriesFrame['people']:
+            if person['visitorId'] == visitorId:
+                hasPerson = True
+        return hasPerson
+
     def runTimeSeriesAnalysis(self, multiCameraFrames):
         # Now we process all the multi camera frames through a time-series analysis
         currentState = {}
         timeSeriesFrames = []
+        visitSummaries = []
         for frameIndex, multiCameraFrame in enumerate(multiCameraFrames):
             timeSeriesFrame, state = self.imageAnalyzer.processMultiCameraFrameTimeSeries(multiCameraFrame,
                                                                                           currentState,
-                                                                                          storeConfiguration)
-            currentState = state
+                                                                                          self.getStoreConfiguration())
+
             timeSeriesFrames.append(timeSeriesFrame)
-        return timeSeriesFrames
+
+            # If any of the people in the frame are declared "exited", compute their visit summary
+            for person in timeSeriesFrame['people']:
+                if person['state'] == 'exited':
+                    # Grab all of the frames which contained this visitId
+                    visitorFrames = [frame for frame in timeSeriesFrames if self.frameHasVisitor(frame, person['visitorId'])]
+
+                    visitSummary = self.imageAnalyzer.createVisitSummary(person['visitorId'], visitorFrames, self.getStoreConfiguration())
+
+                    visitSummaries.append(visitSummary)
+
+                    # pprint(visitSummary)
+
+            currentState = state
+        return timeSeriesFrames, visitSummaries
 
     def drawStoreMapResults(self, multiCameraFrames, timeSeriesFrames):
         storeMapImages = []
@@ -305,8 +327,6 @@ if __name__ == '__main__':
     test.createCameraConfigurations()
     test.showDebugCameraGrid()
 
-    storeConfiguration = test.getStoreConfiguration()
-
     # Either load the singleCameraFrame objects from a cache, or compute them fresh
     cacheFileName = sys.argv[1] + "-cached.json"
     if os.path.exists(cacheFileName):
@@ -323,7 +343,7 @@ if __name__ == '__main__':
     cv2.waitKey(50)
 
     # Now we process all the multi camera frames through a time-series analysis
-    timeSeriesFrames = test.runTimeSeriesAnalysis(multiCameraFrames)
+    timeSeriesFrames, visitSummaries = test.runTimeSeriesAnalysis(multiCameraFrames)
 
     storeMapDebugImages = test.drawStoreMapResults(multiCameraFrames, timeSeriesFrames)
     for frameIndex in range(len(multiCameraFrames)):
@@ -331,8 +351,6 @@ if __name__ == '__main__':
 
     for i in range(test.testData['numberOfImages']):
         debugImages = resultDebugImages[i]
-
-        pprint(timeSeriesFrames[i])
 
         for imageIndex, debugImage in enumerate(debugImages):
             if imageIndex < (len(debugImages)-1):
