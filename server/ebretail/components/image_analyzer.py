@@ -114,7 +114,7 @@ class ImageAnalyzer:
             calibrationDetectionState = None
             raise  # Reraise the exception
         finally:
-            state['timestamp'] = metadata['timestamp']
+            state['timestamp'] = datetime.strptime(metadata['timestamp'], "%Y-%m-%dT%H:%M:%S.%f")
             state['peopleState'] = peopleState
             state['calibrationDetectionState'] = calibrationDetectionState
 

@@ -89,7 +89,7 @@ def processImage(request):
             # TODO: We need better handling for these out-of-order images, since this reduces
             # TODO: quality of the tracking, wastes bandwidth, etc..
             if currentTimestamp is None or timestamp > currentTimestamp:
-                data, newState = imageAnalyzer.processSingleCameraImage(image, currentState, debugImage)
+                data, newState = imageAnalyzer.processSingleCameraImage(image, metadata, currentState, debugImage)
                 globalState[metadata['cameraId']] = newState
 
                 # Forward the results onwards to the main server cluster

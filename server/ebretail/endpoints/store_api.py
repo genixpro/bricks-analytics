@@ -51,7 +51,7 @@ class Store(object):
 
         self.storesCollection.insert(store)
 
-        return True
+        return {'storeId': id}
 
 @resource(path='/store/{id}/store_layout', cors_origins=('*',), cors_max_age=3600, renderer='file')
 class StoreLayout(object):
