@@ -15,6 +15,7 @@ import StoreCameras from './components/Stores/StoreCameras';
 import Login from './components/Authentication/Login';
 import AuthCallback from './components/Authentication/AuthCallback';
 import SubMenu from './components/SubMenu/SubMenu';
+import MiniPOS from './components/MiniPOS/mini_pos';
 import Auth from './services/Auth';
 import _ from 'underscore';
 import {Stomp} from "stompjs/lib/stomp.min";
@@ -48,6 +49,7 @@ messagingClient.connect("guest", "guest", () => {}, onError);
 const listofPages = [
     '/login/callback',
     '/login',
+    '/minipos',
     /* See full project for reference */
 ];
 
@@ -105,6 +107,7 @@ const Routes = ({location}) => {
                 <Switch location={location}>
                     <Route path="/login/callback" render={(props) => <AuthCallback auth={auth} {...props} />}/>
                     <Route path="/login" render={(props) => <Login auth={auth} {...props} />}/>
+                    <Route path="/minipos" render={(props) => <MiniPOS  {...props} />} />
                     {/* See full project for reference */}
                 </Switch>
             </BasePage>
@@ -123,8 +126,7 @@ const Routes = ({location}) => {
                                 <PrivateRoute path="/submenu" component={SubMenu} />
                                 <PrivateRoute path="/new-store" component={NewStore} />
                                 <PrivateRoute path="/find-store" component={FindStore} />
-                                <PrivateRoute path="/store/:storeId" component={ViewStore}>
-                                </PrivateRoute>
+                                <PrivateRoute path="/store/:storeId" component={ViewStore} />
                                 <Redirect to="/singleview"/>
                             </Switch>
                         </div>

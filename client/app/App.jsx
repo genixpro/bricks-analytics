@@ -38,6 +38,6 @@ ReactDOM.render((
     <BrowserRouter basename={WP_BASE_HREF}>
         <Routes />
     </BrowserRouter>
-), document.getElementById('app'))
+), document.getElementById('app'));
 
 
