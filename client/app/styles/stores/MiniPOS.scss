@@ -1,20 +1,61 @@
 
 .mini_pos {
 
-  .receipt-well {
+  .left-half {
     position: absolute;
     top: 20px;
     width: 60%;
-    height: calc(90% - 30px);
+    height: calc(100% - 40px);
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .receipt-well {
+    width: 100%;
+    flex-grow: 1;
+    flex-shrink: 1;
     overflow-y: auto;
   }
 
-  .ad-well {
+  .receipt-barcode-input-wrapper {
+    width: 100%;
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    form {
+      width: calc(100%);
+      height: calc(100%);
+    }
+
+    input {
+      width: calc(100%);
+      height: calc(100%);
+    }
+  }
+
+
+  .right-half {
     position: absolute;
     left: calc(60% + 30px);
     top: 20px;
-    height: calc(90% - 30px);
+    height: calc(100% - 40px);
     width: calc(40% - 50px);
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .ad-well {
+    width: 100%;
+    flex-grow: 1;
+    flex-shrink : 1;
 
     img {
       margin-top: 50px;
@@ -57,21 +98,24 @@
     text-align: right;
   }
 
-  .receipt-barcode-input-wrapper {
-    position: absolute;
-    top: calc(90% + 10px);
-    width: 60%;
-    height: calc(10% - 30px);
-    padding: 0px;
+  .receipt-lost-sales-wrapper {
+    width: 100%;
+    flex-grow: 0;
+    flex-shrink: 0;
 
-    form {
-      width: calc(100%);
-      height: calc(100%);
+    .checkbox {
+      display: inline-block;
+      padding-right: 5px;
+    }
+    .well {
+      margin-bottom: 0;
     }
 
-    input {
-      width: calc(100%);
-      height: calc(100%);
+    button.btn {
+      height: 100%;
+    }
+    p {
+      margin: 0;
     }
   }
 }
