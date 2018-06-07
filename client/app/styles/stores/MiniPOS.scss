@@ -37,7 +37,6 @@
     }
   }
 
-
   .right-half {
     position: absolute;
     left: calc(60% + 30px);
@@ -55,7 +54,7 @@
   .ad-well {
     width: 100%;
     flex-grow: 1;
-    flex-shrink : 1;
+    flex-shrink: 1;
 
     img {
       margin-top: 50px;
@@ -98,24 +97,63 @@
     text-align: right;
   }
 
-  .receipt-lost-sales-wrapper {
+  .receipt-control-wrapper {
     width: 100%;
     flex-grow: 0;
     flex-shrink: 0;
 
-    .checkbox {
-      display: inline-block;
-      padding-right: 5px;
-    }
-    .well {
-      margin-bottom: 0;
-    }
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
 
-    button.btn {
-      height: 100%;
-    }
     p {
       margin: 0;
+    }
+
+    .well {
+      margin-bottom: 0;
+      flex-grow: 1;
+      flex-shrink: 1;
+    }
+
+    .btn.show-lost-sales-button {
+      height: 100%;
+      flex-grow: 0;
+      flex-shrink: 0;
+      margin-left: 10px;
+    }
+
+    .receipt-controls {
+      width: 100%;
+      flex-grow: 1;
+      flex-shrink: 1;
+
+      display: flex;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      justify-content: space-between;
+      align-items: center;
+
+      .receipt-control-buttons {
+        width: 100%;
+      }
+
+      .receipt-lost-sales-wrapper {
+        width: 100%;
+        flex-grow: 0;
+        flex-shrink: 0;
+
+        .checkbox {
+          display: inline-block;
+          padding-right: 5px;
+        }
+
+        .well {
+          margin-top: 10px;
+        }
+      }
     }
   }
 }

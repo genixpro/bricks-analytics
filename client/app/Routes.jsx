@@ -16,6 +16,7 @@ import Login from './components/Authentication/Login';
 import AuthCallback from './components/Authentication/AuthCallback';
 import SubMenu from './components/SubMenu/SubMenu';
 import MiniPOS from './components/MiniPOS/mini_pos';
+import MiniPOSSecondaryScreen from './components/MiniPOS/mini_pos_secondary_screen';
 import Auth from './services/Auth';
 import _ from 'underscore';
 import {Stomp} from "stompjs/lib/stomp.min";
@@ -50,6 +51,7 @@ const listofPages = [
     '/login/callback',
     '/login',
     '/minipos',
+    '/minipos_secondary',
     /* See full project for reference */
 ];
 
@@ -108,6 +110,7 @@ const Routes = ({location}) => {
                     <Route path="/login/callback" render={(props) => <AuthCallback auth={auth} {...props} />}/>
                     <Route path="/login" render={(props) => <Login auth={auth} {...props} />}/>
                     <Route path="/minipos" render={(props) => <MiniPOS  {...props} />} />
+                    <Route path="/minipos_secondary" render={(props) => <MiniPOSSecondaryScreen  {...props} />} />
                     {/* See full project for reference */}
                 </Switch>
             </BasePage>

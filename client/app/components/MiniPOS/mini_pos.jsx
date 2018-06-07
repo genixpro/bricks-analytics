@@ -3,6 +3,7 @@ import ContentWrapper from '../Layout/ContentWrapper';
 import {Button, Grid, Row, Col, Dropdown, MenuItem, Well, Table, Checkbox} from 'react-bootstrap';
 import _ from 'underscore';
 import NumberFormat from 'react-number-format';
+import MiniPosReceiptArea from './mini_pos_receipt_area';
 
 class MiniPos extends React.Component {
     constructor() {
@@ -13,7 +14,9 @@ class MiniPos extends React.Component {
             taxes: 0,
             total: 0,
             lostSales: {}
-        }
+        };
+
+        this.secondaryWindow = window.open("/minipos_secondary", "secondaryWindow", "width=1024,height=768");
     }
 
 
@@ -135,52 +138,29 @@ class MiniPos extends React.Component {
         this.setState({lostSales: newLostSales});
     }
 
+    finishTransaction()
+    {
+
+    }
+
+
+    setState(newState, callback)
+    {
+        super.setState(newState, callback);
+        this.secondaryWindow.postMessage(newState, "*");
+    }
+
 
     render() {
         return (
             <Grid fluid={true} className={"mini_pos"}>
                 <div className={"left-half"} onClick={this.onReceiptAreaClicked.bind(this)}>
-                    <Well bsSize="large" className={"receipt-well"}>
-                        <Row className={"receipt-header"}>
-                            <Col xs={12}>
-                                <div className={"date"}>{new Date().toString()}</div>
-                            </Col>
-                        </Row>
-                        <Row className={"receipt-body"}>
-                            <Col xs={12}>
-                                <Table striped bordered condensed hover>
-                                    <thead>
-                                        <tr>
-                                            <th className={"name-column"}>Name</th>
-                                            <th className={"quantity-column"}>Quantity</th>
-                                            <th className={"each-column"}>Each</th>
-                                            <th className={"total-column"}>Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {
-                                            this.state.items.map((item, index) =>
-                                            {
-                                              return <tr key={index}>
-                                                    <td className={"name-column"}>{item.name}</td>
-                                                    <td className={"quantity-column"}>{item.quantity}</td>
-                                                    <td className={"each-column"}><NumberFormat value={item.price} displayType={'text'} thousandSeparator={true} prefix={'$'} decimalScale={2} /></td>
-                                                    <td className={"total-column"}><NumberFormat value={item.price * item.quantity} displayType={'text'} thousandSeparator={true} prefix={'$'} decimalScale={2} /></td>
-                                                </tr>;
-                                            })
-                                        }
-                                    </tbody>
-                                </Table>
-                            </Col>
-                        </Row>
-                        <Row className={"receipt-total-row"}>
-                            <Col xs={4} xsOffset={8}>
-                                <h3>Subtotal&nbsp;&nbsp;&nbsp;<NumberFormat value={this.state.subtotal} displayType={'text'} thousandSeparator={true} prefix={'$'} decimalScale={2} /></h3>
-                                <h3>Taxes&nbsp;&nbsp;&nbsp;<NumberFormat value={this.state.taxes} displayType={'text'} thousandSeparator={true} prefix={'$'} decimalScale={2} /></h3>
-                                <h2>Total&nbsp;&nbsp;&nbsp;<NumberFormat value={this.state.total} displayType={'text'} thousandSeparator={true} prefix={'$'} decimalScale={2} /></h2>
-                            </Col>
-                        </Row>
-                    </Well>
+                    <MiniPosReceiptArea
+                        items={this.state.items}
+                        subtotal={this.state.subtotal}
+                        taxes={this.state.taxes}
+                        total={this.state.total}
+                    />
                     <div className={"receipt-barcode-input-wrapper"}>
                         <form onSubmit={this.onBarcodeSubmit.bind(this)} action="#">
                             <input type={"text"} id={'receipt-barcode-input'} value={this.state.barcode} onChange={this.barcodeChanged.bind(this)} />
@@ -193,36 +173,42 @@ class MiniPos extends React.Component {
                         <img src={"/img/loblaws_logo.svg"} />
                     </Well>
 
-
-                    <div className={"receipt-lost-sales-wrapper"}>
-                        <Button bsStyle={'default pull-right'} onClick={this.toggleLostSaleOptions.bind(this)}>
+                    <div className={"receipt-control-wrapper"}>
+                        <div className={"receipt-controls"}>
+                            <Well bsSize="small" className={"receipt-control-buttons"}>
+                                <Button bsStyle={'primary'} onClick={this.finishTransaction.bind(this)}>Finish & Pay</Button>
+                            </Well>
+                            <div className={"receipt-lost-sales-wrapper"}>
+                                {
+                                    this.state.showLostSales ?
+                                        <Well onClick={this.resetHideLostSaleWidgetTimeout.bind(this)} bsSize="small" >
+                                            <p>
+                                                <span>LS:&nbsp;&nbsp;</span>
+                                                <Checkbox checked={this.state.lostSales['chips']} onChange={this.toggleLostSale.bind(this, "chips")}>
+                                                    Chips
+                                                </Checkbox>
+                                                <Checkbox checked={this.state.lostSales['guacamole']} onChange={this.toggleLostSale.bind(this, "guacamole")}>
+                                                    Guacamole
+                                                </Checkbox>
+                                                <Checkbox checked={this.state.lostSales['deodorant']} onChange={this.toggleLostSale.bind(this, "deodorant")}>
+                                                    Deodorant
+                                                </Checkbox>
+                                                <Checkbox checked={this.state.lostSales['shaving']} onChange={this.toggleLostSale.bind(this, "shaving")}>
+                                                    Shaving Cream
+                                                </Checkbox>
+                                            </p>
+                                        </Well>
+                                        : null
+                                }
+                            </div>
+                        </div>
+                        <Button className={"show-lost-sales-button"} bsStyle={'default pull-right'} onClick={this.toggleLostSaleOptions.bind(this)}>
                             {
                                 this.state.showLostSales
-                                ? <i className={"fa fa-eye-slash"}/>
-                                : <i className={"fa fa-eye"}/>
+                                    ? <i className={"fa fa-eye-slash"}/>
+                                    : <i className={"fa fa-eye"}/>
                             }
                         </Button>
-                        {
-                            this.state.showLostSales ?
-                                <Well onClick={this.resetHideLostSaleWidgetTimeout.bind(this)}>
-                                    <p>
-                                        <span>Select L/S:&nbsp;&nbsp;</span>
-                                        <Checkbox checked={this.state.lostSales['chips']} onChange={this.toggleLostSale.bind(this, "chips")}>
-                                            Chips
-                                        </Checkbox>
-                                        <Checkbox checked={this.state.lostSales['guacamole']} onChange={this.toggleLostSale.bind(this, "guacamole")}>
-                                            Guacamole
-                                        </Checkbox>
-                                        <Checkbox checked={this.state.lostSales['deodorant']} onChange={this.toggleLostSale.bind(this, "deodorant")}>
-                                            Deodorant
-                                        </Checkbox>
-                                        <Checkbox checked={this.state.lostSales['shaving']} onChange={this.toggleLostSale.bind(this, "shaving")}>
-                                            Shaving Cream
-                                        </Checkbox>
-                                    </p>
-                                </Well>
-                                : null
-                        }
                     </div>
                 </div>
             </Grid>
