@@ -28,6 +28,10 @@
         "track": {
           "type": "array",
           "items": {"$ref": "Coordinate.json#/definitions/Coordinate"}
+        },
+        "transactions": {
+          "type": "array",
+          "items": {"$ref": "Transaction.json#/definitions/Transaction"}
         }
       }
     }

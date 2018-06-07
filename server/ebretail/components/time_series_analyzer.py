@@ -16,6 +16,7 @@ import scipy.linalg
 import bson.json_util
 import pickle
 from ebretail.components.image_analyzer import ImageAnalyzer
+from ebretail.components.visit_summarizer import VisitSummarizer
 
 
 class TimeSeriesAnalyzer:
@@ -38,6 +39,7 @@ class TimeSeriesAnalyzer:
         self.schedulerThread.start()
 
         self.imageAnalyzer = ImageAnalyzer()
+        self.visitSummarizer = VisitSummarizer(db)
 
     def main(self):
         multiCameraFramesCollection = self.db.multiCameraFrames
@@ -102,9 +104,10 @@ class TimeSeriesAnalyzer:
                     sort=[('timestamp', pymongo.DESCENDING)]
                 )
 
-                visitorSummary = self.imageAnalyzer.createVisitSummary(person['visitorId'], framesWithPerson, store)
+                visitorSummary = self.visitSummarizer.createVisitSummary(person['visitorId'], framesWithPerson, store)
 
-                pprint(visitorSummary)
+                if len(visitorSummary['transactions']) > 0:
+                    pprint(visitorSummary)
 
                 visitorsCollection.insert(visitorSummary)
 

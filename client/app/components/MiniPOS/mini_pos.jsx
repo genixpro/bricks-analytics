@@ -4,6 +4,7 @@ import {Button, Grid, Row, Col, Dropdown, MenuItem, Well, Table, Checkbox} from 
 import _ from 'underscore';
 import NumberFormat from 'react-number-format';
 import MiniPosReceiptArea from './mini_pos_receipt_area';
+import axios from "axios/index";
 
 class MiniPos extends React.Component {
     constructor() {
@@ -140,7 +141,28 @@ class MiniPos extends React.Component {
 
     finishTransaction()
     {
-
+        axios({
+            method: 'post',
+            url: '/transactions',
+            data: {
+                timestamp: new Date().toISOString(),
+                items: this.state.items,
+                subtotal: this.state.subtotal,
+                taxes: this.state.taxes,
+                total: this.state.total,
+                lostSales: {}
+            }
+        }).then((result) =>
+        {
+            this.setState({
+                items: [],
+                subtotal: 0,
+                taxes: 0,
+                total: 0,
+                lostSales: {}
+            });
+            alert('Success!');
+        }, (error) => alert("Could not make transaction. " + error.toString()));
     }
 
 

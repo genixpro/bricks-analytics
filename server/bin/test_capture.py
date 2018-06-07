@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     # Load calibration image
     test.loadCalibrationImage()
-    test.createCameraConfigurations()
+    test.createCameraConfigurations(showDebug=True)
     test.showDebugCameraGrid()
 
     # Either load the singleCameraFrame objects from a cache, or compute them fresh

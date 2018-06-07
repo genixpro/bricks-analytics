@@ -3,6 +3,7 @@ import {Col, Row, Panel, Alert} from 'react-bootstrap';
 import {withRouter, Link} from "react-router-dom";
 import {Stomp} from 'stompjs/lib/stomp.min';
 import axios from "axios/index";
+import VisitorTransaction from "./VisitorTransaction";
 import _ from 'underscore';
 const ReactHeatmap = require('react-heatmap');
 
@@ -98,7 +99,7 @@ class ListVisitors extends React.Component {
                     </Col>
                     {this.state.visitor &&
                     <Col md={9}>
-                        <div className="row">
+                        <Row>
                             <h1>Visitor {this.state.visitor.visitorId}</h1>
 
                             <div className={'storemap-heat-map'}>
@@ -108,8 +109,16 @@ class ListVisitors extends React.Component {
                                 </div>
                             </div>
 
-                        </div>
-
+                        </Row>
+                        <Row>
+                            {
+                                this.state.visitor.transactions ?
+                                    this.state.visitor.transactions.map((transaction) =>
+                                    {
+                                        return <VisitorTransaction value={transaction}/>;
+                                    }) : null
+                            }
+                        </Row>
                     </Col>
                     }
                 </Row>

@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "This represents a Transaction made by a user at a POS terminal. This data comes into us either from an external POS system, or from the MiniPOS inside of Bricks Analytics.",
+      "type": "object",
+      "properties": {
+        "_id": {
+          "type": "string"
+        },
+        "transactionId": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sku": {"type": "string"},
+              "name": {"type": "string"},
+              "quantity": {"type": "number"},
+              "price": {"type": "number"}
+            }
+          }
+        },
+        "subtotal": {"type": "number"},
+        "taxes": {"type": "number"},
+        "total": {"type": "number"}
+      }
+    }
+  },
+  "$ref": "#/definitions/Transaction"
+}

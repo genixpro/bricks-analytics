@@ -46,6 +46,7 @@ class CaptureTest:
         self.storeUrl = "http://localhost:1806/store"
         self.imageProcessorUrl = "http://localhost:1845/process_image"
         self.registrationUrl = "http://localhost:1806/register_collector"
+        self.transactionUrl = "http://localhost:1806/transactions"
         self.amqpUri = "localhost"
 
         self.uploadTimeout = 5
@@ -121,7 +122,7 @@ class CaptureTest:
         self.annotationHeightAdjust = (fullCalibrationImage.height + self.testData['storeMap']['height']) / \
                                       self.annotations['frames']["0"][0]["height"]
 
-    def createCameraConfigurations(self):
+    def createCameraConfigurations(self, showDebug=False):
         # Detect the calibration object for each camera, and generate its configuration object
         singleCameraConfigurations = []
         for cameraIndex, cameraImage in enumerate(self.calibrationImages):
@@ -155,25 +156,26 @@ class CaptureTest:
                 "distortionCoefficients": calibrationObject["distortionCoefficients"]
             }
 
-            axis = numpy.float32(
-                [[0, 0, 0], [0, 3, 0], [3, 3, 0], [3, 0, 0], [0, 0, -3], [0, 3, -3], [3, 3, -3], [3, 0, -3]])
+            if showDebug:
+                axis = numpy.float32(
+                    [[0, 0, 0], [0, 3, 0], [3, 3, 0], [3, 0, 0], [0, 0, -3], [0, 3, -3], [3, 3, -3], [3, 0, -3]])
 
-            # project 3D points to image plane
-            imgpts, jac = cv2.projectPoints(axis, numpy.array(cameraConfiguration['rotationVector']),
-                                            numpy.array(cameraConfiguration['translationVector']),
-                                            numpy.array(cameraConfiguration['cameraMatrix']),
-                                            numpy.array(cameraConfiguration['distortionCoefficients']))
+                # project 3D points to image plane
+                imgpts, jac = cv2.projectPoints(axis, numpy.array(cameraConfiguration['rotationVector']),
+                                                numpy.array(cameraConfiguration['translationVector']),
+                                                numpy.array(cameraConfiguration['cameraMatrix']),
+                                                numpy.array(cameraConfiguration['distortionCoefficients']))
 
-            def draw(img, imgpts):
-                img = cv2.line(img, tuple(imgpts[0].ravel()), tuple(imgpts[3].ravel()), (255, 0, 0), 5)
-                img = cv2.line(img, tuple(imgpts[0].ravel()), tuple(imgpts[1].ravel()), (0, 255, 0), 5)
-                img = cv2.line(img, tuple(imgpts[0].ravel()), tuple(imgpts[4].ravel()), (0, 0, 255), 5)
-                return img
+                def draw(img, imgpts):
+                    img = cv2.line(img, tuple(imgpts[0].ravel()), tuple(imgpts[3].ravel()), (255, 0, 0), 5)
+                    img = cv2.line(img, tuple(imgpts[0].ravel()), tuple(imgpts[1].ravel()), (0, 255, 0), 5)
+                    img = cv2.line(img, tuple(imgpts[0].ravel()), tuple(imgpts[4].ravel()), (0, 0, 255), 5)
+                    return img
 
-            draw(debugImage, imgpts)
+                draw(debugImage, imgpts)
 
-            cv2.imshow('calibration-' + str(cameraIndex), debugImage)
-            cv2.waitKey(1000)
+                cv2.imshow('calibration-' + str(cameraIndex), debugImage)
+                cv2.waitKey(1000)
 
             singleCameraConfigurations.append(cameraConfiguration)
 
@@ -317,10 +319,10 @@ class CaptureTest:
                     visitorFrames = [frame for frame in timeSeriesFrames if
                                      self.frameHasVisitor(frame, person['visitorId'])]
 
-                    visitSummary = self.imageAnalyzer.createVisitSummary(person['visitorId'], visitorFrames,
-                                                                         self.getStoreConfiguration())
+                    # visitSummary = self.imageAnalyzer.createVisitSummary(person['visitorId'], visitorFrames,
+                    #                                                      self.getStoreConfiguration())
 
-                    visitSummaries.append(visitSummary)
+                    # visitSummaries.append(visitSummary)
 
                     # pprint(visitSummary)
 
@@ -450,6 +452,13 @@ class CaptureTest:
         r = requests.post(self.registrationUrl, json=data)
 
 
+    def sendTransaction(self, transaction):
+        """ Makes a fake transaction in the system. """
+
+        transaction['timestamp'] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+        r = requests.post(self.transactionUrl, json=transaction)
+
+
     def runSimulation(self):
         timeStamp = datetime.datetime.now()
 
@@ -464,6 +473,10 @@ class CaptureTest:
 
             for imageIndex, image in enumerate(cameraImages):
                 self.uploadImageToProcessor(image, timeStamp, imageIndex)
+
+            for transaction in self.testData['transactions']:
+                if transaction['frame'] == i:
+                    self.sendTransaction(transaction)
 
             timeStamp = timeStamp + datetime.timedelta(seconds=0.5)
 

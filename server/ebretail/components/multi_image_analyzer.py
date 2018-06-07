@@ -71,18 +71,12 @@ class MultiImageAnalyzer:
         currentMultiCameraFrame = multiCameraFramesCollection.find_one({"frameNumber": frame['frameNumber']})
         store = storesCollection.find_one({"_id": frame['storeId']})
 
-        print("about to process")
-        pprint(singleCameraFrames)
-        pprint(store)
-
         newMultiCameraFrame = self.imageAnalyzer.processMultipleCameraFrames(singleCameraFrames, store['cameras'])
 
         newMultiCameraFrame['storeId'] = currentMultiCameraFrame['storeId']
         newMultiCameraFrame['timestamp'] = currentMultiCameraFrame['timestamp']
         newMultiCameraFrame['frameNumber'] = currentMultiCameraFrame['frameNumber']
         newMultiCameraFrame['needsUpdate'] = False
-
-        pprint(newMultiCameraFrame)
 
         multiCameraFramesCollection.update_one({"_id": frame['_id']}, {"$set": newMultiCameraFrame})
 
