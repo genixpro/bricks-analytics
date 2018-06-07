@@ -3,9 +3,7 @@ import {Col, Row, Panel, Alert} from 'react-bootstrap';
 import {withRouter, Link} from "react-router-dom";
 import {Stomp} from 'stompjs/lib/stomp.min';
 import axios from "axios/index";
-import VisitorTransaction from "./VisitorTransaction";
-import _ from 'underscore';
-const ReactHeatmap = require('react-heatmap');
+import VisitSummary from './VisitSummary';
 
 class ListVisitors extends React.Component {
     constructor(props) {
@@ -33,13 +31,6 @@ class ListVisitors extends React.Component {
                     url: `/store/${this.props.store._id}/visitors/${this.props.match.params.visitorId}`
                 }).then((response) => {
                     state.visitor = response.data;
-                    state.heatmap = state.visitor.track.map((entry) => {
-                        return {
-                            "x": entry.x * 100,
-                            "y": entry.y * 100,
-                            "value": 5
-                        };
-                    });
                     this.setState(state);
                 });
             }
@@ -98,28 +89,7 @@ class ListVisitors extends React.Component {
                         </div>
                     </Col>
                     {this.state.visitor &&
-                    <Col md={9}>
-                        <Row>
-                            <h1>Visitor {this.state.visitor.visitorId}</h1>
-
-                            <div className={'storemap-heat-map'}>
-                                <img className='store-image' id='storemap-heatmap-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout?" + this.props.editorState.storeLayoutCacheBreaker} />
-                                <div className={'heatmap-container'}>
-                                    <ReactHeatmap max={5} data={this.state.heatmap} unit={'percent'} />
-                                </div>
-                            </div>
-
-                        </Row>
-                        <Row>
-                            {
-                                this.state.visitor.transactions ?
-                                    this.state.visitor.transactions.map((transaction) =>
-                                    {
-                                        return <VisitorTransaction value={transaction}/>;
-                                    }) : null
-                            }
-                        </Row>
-                    </Col>
+                        <VisitSummary visitor={this.state.visitor}/>
                     }
                 </Row>
             </div>
