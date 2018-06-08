@@ -53,7 +53,7 @@ class StoreInventory extends React.Component {
 
     render() {
         const storeInventorySchema = _.clone(InventoryItemSchema);
-        storeInventorySchema.properties.zone.enum = this.props.store.zones.map((zone) => (zone.name || zone.id).toString());
+        storeInventorySchema.properties.zone.enum = this.props.store.zones.map((zone) => (zone.id).toString());
 
         return (
             <div className="store-inventory">

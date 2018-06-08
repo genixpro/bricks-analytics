@@ -20,11 +20,14 @@
               "zoneId": {"type": "number"},
               "timeSpentSeconds": {"type": "number"},
               "timeSpentPercentage": {"type": "number"},
+              "totalSpend": {"type": "number"},
+              "lostSales": {"type": "number"},
             }
           }
         },
         "concentrationZoneId": {"type": "string"},
         "timeSpentSeconds": {"type": "string"},
+        "totalLostSales": {"type": "string"},
         "track": {
           "type": "array",
           "items": {"$ref": "Coordinate.json#/definitions/Coordinate"}

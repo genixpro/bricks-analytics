@@ -598,7 +598,7 @@ class ImageAnalyzer:
                 person['state'] = 'hidden'
 
         for personIndex, boundingBox in enumerate(tracked):
-            visitorId = str(multiCameraFrame['storeId']) + "-" + str(boundingBox[4])
+            visitorId = str(multiCameraFrame['storeId']) + "-" + str(int(boundingBox[4]))
             newPersonData = {
                 'visitorId': visitorId,
                 "x": (boundingBox[0]/2 + boundingBox[2]/2) / storeConfiguration['storeMap']['width'],

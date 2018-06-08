@@ -65,7 +65,9 @@ class VisitSummarizer:
             newZone = {
                 "zoneId": str(zone['id']),
                 "timeSpentSeconds": 0,
-                "timeSpentPercentage": 0
+                "timeSpentPercentage": 0,
+                "totalSpend": 0,
+                "lostSales": 0
             }
             zones.append(newZone)
             zoneMap[str(zone['id'])] = newZone
@@ -74,7 +76,9 @@ class VisitSummarizer:
         nullZone = {
             "zoneId": 'None',
             "timeSpentSeconds": 0,
-            "timeSpentPercentage": 0
+            "timeSpentPercentage": 0,
+            "totalSpend": 0,
+            "lostSales": 0
         }
         zoneMap['None'] = nullZone
         zones.append(nullZone)
@@ -111,5 +115,37 @@ class VisitSummarizer:
             "timestamp": {"$gte": start, "$lte": end}
         }))
         visitSummary['transactions'] = transactions
+
+        # Now we go through each transaction and each zone and compute the total spend for that zone.
+        visitSummary['totalLostSales'] = 0
+        if 'inventory' in storeConfiguration:
+            # Go through each item in the transaction
+            for transaction in transactions:
+                for transactionItem in transaction['items']:
+                    # Retrieve sku information on each item in the transaction
+                    storeItem = None
+                    for item in storeConfiguration['inventory']:
+                        if item['barcode'] == transactionItem['barcode']:
+                            storeItem = item
+                            break
+                    # Now find the zone for this item and increase its spend
+                    for zone in zones:
+                        if zone['id'] == storeItem['zone']:
+                            zone['totalSpend'] += transactionItem['price'] * transactionItem['quantity']
+                if 'lostSales' in transaction:
+                    for lostSaleItem in transaction['lostSales']:
+                        # Retrieve sku information on each lost sale item
+                        storeItem = None
+                        for item in storeConfiguration['inventory']:
+                            if item['barcode'] == lostSaleItem:
+                                storeItem = item
+                                break
+
+                        # Add the number to the total for lost sales
+                        visitSummary['totalLostSales'] += storeItem['price'] * 1
+                        # Now find the zone for this item and increase lost sales
+                        for zone in zones:
+                            if zone['id'] == storeItem['zone']:
+                                zone['lostSales'] += storeItem['price'] * 1
 
         return visitSummary
