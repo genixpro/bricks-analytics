@@ -30,7 +30,15 @@
         "totalLostSales": {"type": "string"},
         "track": {
           "type": "array",
-          "items": {"$ref": "Coordinate.json#/definitions/Coordinate"}
+          "items": {"$ref": "Coordinate.json#/definitions/Coordinate"},
+          "properties": {
+            "zoneId": {"type": "string"},
+            "timestamp": {"type": "string"},
+            "detectionIds": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
         },
         "transactions": {
           "type": "array",

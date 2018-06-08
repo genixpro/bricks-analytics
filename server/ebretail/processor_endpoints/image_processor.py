@@ -89,7 +89,7 @@ def processImage(request):
             # TODO: We need better handling for these out-of-order images, since this reduces
             # TODO: quality of the tracking, wastes bandwidth, etc..
             if currentTimestamp is None or timestamp > currentTimestamp:
-                singleCameraFrame, newState = imageAnalyzer.processSingleCameraImage(image, metadata, currentState, debugImage)
+                singleCameraFrame, newState, personImages = imageAnalyzer.processSingleCameraImage(image, metadata, currentState, debugImage)
                 globalState[metadata['cameraId']] = newState
 
                 # Forward the results onwards to the main server cluster
@@ -112,6 +112,24 @@ def processImage(request):
                     b.seek(0)
 
                     r = requests.post(imageRecordUrl.format(recordMetadata['cameraId']), files={'image': b, "metadata": json.dumps(recordMetadata)})
+
+                for detectionId, personImage in personImages.items():
+                    imageRecordUrl = "http://localhost:1806/store/" + str(metadata['storeId']) + "/detections/" + str(detectionId) + "/image"
+
+                    image = Image.fromarray(personImage, mode=None)
+                    b = io.BytesIO()
+                    image.save(b, "JPEG", quality=80)
+                    b.seek(0)
+
+                    detectionImageMetadata = {
+                        "storeId": metadata['storeId'],
+                        "cameraId": metadata['cameraId'],
+                        "timestamp": metadata['timestamp'],
+                        "cameraIndex": metadata['cameraIndex'],
+                        "detectionId": detectionId
+                    }
+
+                    r = requests.post(imageRecordUrl, files={'image': b, "metadata": json.dumps(detectionImageMetadata)})
             else:
                 # print("Discarded image due to out-of-order: " + metadata['timestamp'])
                 pass

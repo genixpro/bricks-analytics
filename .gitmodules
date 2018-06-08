@@ -1,3 +1,12 @@
 [submodule "lib/pose-tensorflow"]
 	path = lib/pose-tensorflow
 	url = https://github.com/electricbrainio/pose-tensorflow.git
+[submodule "server/ebretail/init/BlurDetection2"]
+	path = server/ebretail/init/BlurDetection2
+	url = https://github.com/WillBrennan/BlurDetection2.git
+[submodule "server/ebretail/lib/BlurDetection2"]
+	path = server/ebretail/lib/BlurDetection2
+	url = https://github.com/WillBrennan/BlurDetection2.git
+[submodule "lib/BlurDetection2"]
+	path = lib/BlurDetection2
+	url = https://github.com/WillBrennan/BlurDetection2.git

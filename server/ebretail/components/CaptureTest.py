@@ -253,9 +253,10 @@ class CaptureTest:
 
                 # Use the image analyzer to produce the SingleCameraFrame object for this camera image.
                 # This first step mostly just detects people and detects the calibration object.
-                singleCameraFrame, newState = self.imageAnalyzer.processSingleCameraImage(cameraImage, metadata,
-                                                                                          currentState,
-                                                                                          debugImage)
+                singleCameraFrame, newState, personImages = self.imageAnalyzer.processSingleCameraImage(cameraImage,
+                                                                                                        metadata,
+                                                                                                        currentState,
+                                                                                                        debugImage)
 
                 states[camera['name']] = newState
 

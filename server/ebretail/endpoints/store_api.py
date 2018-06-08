@@ -113,3 +113,49 @@ class RecentVisitors(object):
         visitor = self.visitors.find_one({"visitorId": id})
         return visitor
 
+
+
+
+@resource(path='/store/{storeId}/detections/{detectionId}/image', cors_origins=('*',), cors_max_age=3600, renderer='file')
+class DetectionImage(object):
+    """This RESTful endpoint is used for storing and retrieving images of various people that have been detected by the system."""
+    def __init__(self, request, context=None):
+        self.request = request
+
+        self.detectionImages = gridfs.GridFS(request.registry.db, collection='detectionImages')
+
+    def __acl__(self):
+        return [(Allow, Everyone, 'everything')]
+
+
+    def get(self):
+        storeId = int(self.request.matchdict['storeId'])
+        detectionId = self.request.matchdict['detectionId']
+
+        try:
+            image = self.detectionImages.get(detectionId)
+
+            if image is None:
+                return None
+            else:
+                return image
+        except gridfs.errors.NoFile:
+            return None
+
+    def post(self):
+        image = self.request.POST['image'].file
+
+        storeId = int(self.request.matchdict['storeId'])
+        detectionId = self.request.matchdict['detectionId']
+
+        print(detectionId)
+
+        if self.detectionImages.exists(detectionId):
+            self.detectionImages.delete(detectionId)
+
+        metadata = {"_id": detectionId}
+
+        result = self.detectionImages.put(image, **metadata)
+
+        return None
+

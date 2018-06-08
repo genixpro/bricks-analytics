@@ -32,7 +32,8 @@ class VisitSummarizer:
         """
         visitSummary = {
             "storeId": storeConfiguration['storeId'],
-            "visitorId": visitorId
+            "visitorId": visitorId,
+            "detectionIds": []
         }
 
         # Compute the track
@@ -45,8 +46,10 @@ class VisitSummarizer:
                         "x": person['x'],
                         "y": person['y'],
                         "zoneId": person['zone'],
-                        "timestamp": person['timestamp']
+                        "timestamp": person['timestamp'],
+                        "detectionIds": person['detectionIds']
                     })
+                    visitSummary['detectionIds'] = list(set(visitSummary['detectionIds'] + person['detectionIds']))
 
         # Sort the track by the timestamps
         visitSummary['track'] = sorted(visitSummary['track'], key=lambda item: item['timestamp'])
@@ -102,6 +105,9 @@ class VisitSummarizer:
             if zone['timeSpentPercentage'] > maxZonePercent:
                 maxZonePercent = zone['timeSpentPercentage']
                 visitSummary['concentrationZoneId'] = str(zone['zoneId'])
+
+        # Add the zones onto the summary
+        visitSummary['zones'] = zones
 
 
         # Now we must fetch any transactions that were associatted with this visit.

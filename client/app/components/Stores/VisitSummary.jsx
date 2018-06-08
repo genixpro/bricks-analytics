@@ -28,7 +28,7 @@ class VisitSummary extends React.Component {
         let concentrationZone = null;
         this.props.visitor.zones.forEach((zone) =>
         {
-            if (zone.id === this.props.visitor.concentrationZoneId)
+            if (zone.zoneId === this.props.visitor.concentrationZoneId)
             {
                 concentrationZone = zone;
             }
@@ -55,18 +55,22 @@ class VisitSummary extends React.Component {
 
     render() {
         return (
-            <Col md={9}>
+            <Col md={9} className={"visit-summary"}>
                 <Row>
                     <h1>Visitor {this.props.visitor.visitorId}</h1>
                 </Row>
                 <Row>
                     <Col md={6}>
-                        <h2>Track Summary</h2>
-                        <div className={'storemap-heat-map'}>
-                            <img className='store-image' id='storemap-heatmap-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout"} />
-                            <div className={'heatmap-container'}>
-                                <ReactHeatmap max={5} data={this.heatmap} unit={'percent'} />
-                            </div>
+                        <h2>Person Identification</h2>
+                        <div className={'person-images'}>
+                            {
+                                this.props.visitor.detectionIds ?
+                                    this.props.visitor.detectionIds.map((detectionId) =>
+                                    {
+                                        return <img className='detection-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/detections/" + detectionId + "/image"} />;
+                                    })
+                                    : null
+                            }
                         </div>
                     </Col>
                     <Col md={6}>
@@ -131,6 +135,17 @@ class VisitSummary extends React.Component {
                                 </Alert>
                             </Col>
                         </Row>
+                    </Col>
+                </Row>
+                <Row>
+                    <Col md={6}>
+                        <h2>Track Summary</h2>
+                        <div className={'storemap-heat-map'}>
+                            <img className='store-image' id='storemap-heatmap-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout"} />
+                            <div className={'heatmap-container'}>
+                                <ReactHeatmap max={3} data={this.heatmap} unit={'percent'} />
+                            </div>
+                        </div>
                     </Col>
                 </Row>
                 <Row>

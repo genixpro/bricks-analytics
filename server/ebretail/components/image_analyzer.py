@@ -3,6 +3,7 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", "lib"))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", "lib", "pose-tensorflow"))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", "lib", "BlurDetection2"))
 
 import os
 import uuid
@@ -17,6 +18,7 @@ import cv2
 import json
 import datetime
 import math
+import skimage.util
 from datetime import datetime
 import requests
 from pyramid.response import Response
@@ -33,6 +35,10 @@ from multiperson.predict import SpatialModel, eval_graph, get_person_conf_multic
 from multiperson.visualize import PersonDraw, visualize_detections
 
 from sort import Sort
+
+from blur_detection import estimate_blur
+from blur_detection import fix_image_size
+from blur_detection import pretty_blur_map
 
 
 globalSharedInstanceLock = threading.RLock()
@@ -93,7 +99,7 @@ class ImageAnalyzer:
             :param metadata: A python dictionary containing storeId, cameraId, and timestamp metadata objects.
             :param state: A state object, representing carryover state from the previous processed image.
             :param debugImage: A numpy array, representing a clone of the image, to which debug information can be written to.
-            :return: A tuple (singleCameraFrame, state) representing the resulting SingleCameraFrame object, and state to be carried over to the next image.
+            :return: A tuple (singleCameraFrame, state, personImages) representing the resulting SingleCameraFrame object, and state to be carried over to the next image. In addition, images of people to be saved to the server are returned.
         """
 
         peopleState = state.get('peopleState', None)
@@ -101,10 +107,14 @@ class ImageAnalyzer:
 
         try:
             # Use the global image analyzer to do all the general purpose detections
-            people, peopleState, debugImage = self.detectPeople(image, peopleState, debugImage)
+            people, peopleState, debugImage, personImages = self.detectPeople(image, peopleState, debugImage)
 
             for person in people:
-                person['detectionId'] = metadata['cameraId'] + "-" + str(person['detectionId'])
+                oldDetectionId = person['detectionId']
+                person['detectionId'] = str(metadata['storeId']) + "-" + str(metadata['cameraId']) + "-" + str(person['detectionId'])
+                if oldDetectionId in personImages:
+                    personImages[person['detectionId']] = personImages[oldDetectionId]
+                    del personImages[oldDetectionId]
 
             calibrationObject, calibrationDetectionState, debugImage = self.detectCalibrationObject(image, calibrationDetectionState, debugImage)
         except Exception as e:
@@ -130,7 +140,7 @@ class ImageAnalyzer:
 
         validateSingleCameraFrame(singleCameraFrame)
 
-        return (singleCameraFrame, state)
+        return (singleCameraFrame, state, personImages)
 
 
     def inverseScreenLocation(self, location, height, rotationVector, translationVector, cameraMatrix, calibrationReference):
@@ -386,13 +396,16 @@ class ImageAnalyzer:
             :param image: The image to be processed
             :param state: The current state of the people detector, from the last image. None if there is no current state.
             :param debugImage: The image upon which debug information can be written
-            :return: (people, state, debugImage)
+            :return: (people, state, debugImage, personImages)
         """
         if not self.poseSess:
             self.poseSess, self.poseInputs, self.poseOutputs = predict.setup_pose_prediction(self.cfg)
 
         if not state:
             state = {}
+
+        width = len(image)
+        height = len(image[0])
 
         # Each person data has {id, keypoints, trackers}
         currentPeople = state.get('people', [])
@@ -453,7 +466,6 @@ class ImageAnalyzer:
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 cv2.putText(debugImage, str(int(box[4])), (textX, textY), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
-
             # Now we have a bunch of tracked boxes. Find which person goes with which tracked box
             for box in trackedBoxes:
                 bestMatch = None
@@ -482,7 +494,7 @@ class ImageAnalyzer:
                         bestDistance = distance
                 if bestMatch is not None:
                     personData = {
-                        'detectionId': box[4],
+                        'detectionId': str(int(box[4])),
                         'keypoints': self.getKeypointsObject(bestMatch),
                         "bounding_box": self.boundingBoxForPerson(bestMatch)
                     }
@@ -510,13 +522,83 @@ class ImageAnalyzer:
 
             self.draw_multi.draw(debugImage, self.dataset, peoplePoints)
 
+        # Now, grab an image of each person detection.
+        # If the person detection has more points then has been detected for that person before,
+        # or it has the same or -1 the number of points detected, but it is a less blurry image
+        # of that person, then we include the image of that person.
+        if 'bestImages' not in state:
+            state['bestImages'] = {}
+
+        personImages = {}
+        for person in currentPeople:
+            bestImage = state['bestImages'].get(person['detectionId'], None)
+
+            personWidth = person['bounding_box']['right'] - person['bounding_box']['left']
+            personHeight = person['bounding_box']['bottom'] - person['bounding_box']['top']
+
+            cropWidth = max(150, personWidth + 100)
+            cropHeight = max(150, personHeight + 100)
+
+            centerX = person['bounding_box']['left']/2 + person['bounding_box']['right']/2
+            centerY = person['bounding_box']['top']/2 + person['bounding_box']['bottom']/2
+
+            cropTop = max(0, centerY - cropHeight / 2)
+            cropBottom = min(centerY + cropHeight /2, height - 1)
+            cropLeft = max(0, centerX - cropWidth/2)
+            cropRight = min(centerX + cropWidth / 2, width - 1)
+
+            personWithinCropLeft = person['bounding_box']['left'] - cropLeft
+            personWithinCropRight = person['bounding_box']['right'] - cropLeft
+            personWithinCropTop = person['bounding_box']['top'] - cropTop
+            personWithinCropBottom = person['bounding_box']['bottom'] - cropTop
+
+            # If we can't get a decent sized cropped image, and there is already an
+            # image, then ignore this one.
+            if ((cropRight - cropLeft) < 100 or (cropBottom - cropTop) < 100) and bestImage is not None:
+                continue
+
+            croppedImage = image[int(cropTop):int(cropBottom), int(cropLeft):int(cropRight)]
+            croppedImage = cv2.cvtColor(croppedImage, cv2.COLOR_BGR2RGB)
+
+            cv2.rectangle(croppedImage, (int(personWithinCropLeft), int(personWithinCropTop)), (int(personWithinCropRight), int(personWithinCropBottom)), (0, 255, 0), 3)
+
+            try:
+                blur_map, score, blurry = estimate_blur(croppedImage)
+            except cv2.error:
+                # Ignore error, assume maximum blurriness
+                score = 0
+
+            points = 0
+            for key in self.keypointNames:
+                if person['keypoints'][key]['x'] and person['keypoints'][key]['y']:
+                    points += 1
+
+            if bestImage is None:
+                personImages[person['detectionId']] = croppedImage
+                state['bestImages'][person['detectionId']] = {
+                    'points': points,
+                    'blurriness': score
+                }
+            elif points > (bestImage['points'] + 1):
+                personImages[person['detectionId']] = croppedImage
+                state['bestImages'][person['detectionId']] = {
+                    'points': points,
+                    'blurriness': score
+                }
+            elif points >= (bestImage['points']) and score > bestImage['blurriness']:
+                personImages[person['detectionId']] = croppedImage
+                state['bestImages'][person['detectionId']] = {
+                    'points': points,
+                    'blurriness': score
+                }
+
         state['people'] = currentPeople
         state['frameIndex'] = frameIndex
 
         for person in currentPeople:
             print("Person: ", person['detectionId'])
 
-        return currentPeople, state, debugImage
+        return currentPeople, state, debugImage, personImages
 
 
     def detectCalibrationObject(self, image, state, debugImage):
@@ -599,8 +681,16 @@ class ImageAnalyzer:
 
         for personIndex, boundingBox in enumerate(tracked):
             visitorId = str(multiCameraFrame['storeId']) + "-" + str(int(boundingBox[4]))
+
+            if int(boundingBox[5]) > -1:
+                multiCameraFramePerson = multiCameraFrame['people'][int(boundingBox[5])]
+                detectionIds = multiCameraFramePerson['detectionIds']
+            else:
+                detectionIds = []
+
             newPersonData = {
                 'visitorId': visitorId,
+                'detectionIds': detectionIds,
                 "x": (boundingBox[0]/2 + boundingBox[2]/2) / storeConfiguration['storeMap']['width'],
                 "y": (boundingBox[1]/2 + boundingBox[3]/2) / storeConfiguration['storeMap']['height'],
                 "timestamp": multiCameraFrame['timestamp'],

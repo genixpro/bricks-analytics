@@ -35,6 +35,10 @@
                 "type": "array",
                 "items": {"type": "string"}
               },
+              "detectionIds": {
+                "type": "array",
+                "items": {"type": "string"}
+              },
               "x": {
                 "type": "number"
               },

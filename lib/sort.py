@@ -96,6 +96,7 @@ class KalmanBoxTracker(object):
     self.kf.x[:4] = convert_bbox_to_z(bbox)
     self.time_since_update = 0
     self.id = KalmanBoxTracker.count
+    self.detIndex = None
     KalmanBoxTracker.count += 1
     self.history = []
     self.hits = 0
@@ -199,7 +200,7 @@ class Sort(object):
   def update(self,dets):
     """
     Params:
-      dets - a numpy array of detections in the format [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
+      dets - a numpy array of detections in the format [[x1,y1,x2,y2,score,input_index],[x1,y1,x2,y2,score,index_index],...]
     Requires: this method must be called once for each frame even with empty detections.
     Returns the a similar array, where the last column is the object ID.
 
@@ -219,23 +220,30 @@ class Sort(object):
     for t in reversed(to_del):
       self.trackers.pop(t)
     matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(dets,trks, self.mode)
+    # print(matched, unmatched_dets, unmatched_trks)
+
+    # Set all trackers detIndex to 0
+    for trk in self.trackers:
+      trk.detIndex = -1
 
     #update matched trackers with assigned detections
     for t,trk in enumerate(self.trackers):
       if(t not in unmatched_trks):
         d = matched[np.where(matched[:,1]==t)[0],0]
         trk.update(dets[d,:][0])
+        trk.detIndex = d
 
     #create and initialise new trackers for unmatched detections
     for i in unmatched_dets:
         trk = KalmanBoxTracker(dets[i,:])
+        trk.detIndex = i
         self.trackers.append(trk)
 
     i = len(self.trackers)
     for trk in reversed(self.trackers):
         d = trk.get_state()[0]
         if((trk.hits >= self.min_hits or self.frame_count <= self.min_hits)): # ELECTRIC BRAIN MODIFIED THIS LINE
-          ret.append(np.concatenate((d,[trk.id+1])).reshape(1,-1)) # +1 as MOT benchmark requires positive
+          ret.append(np.concatenate((d,[trk.id+1, trk.detIndex])).reshape(1,-1)) # +1 as MOT benchmark requires positive
         i -= 1
         #remove dead tracklet
         if(trk.time_since_update > self.max_age):
