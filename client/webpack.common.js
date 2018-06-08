@@ -16,7 +16,7 @@ module.exports = {
 
     resolve: {
         modules: [path.join(__dirname, ''), 'node_modules', 'bower_components'],
-        extensions: ['.js', '.jsx'],
+        extensions: ['.js', '.jsx', '.json'],
         alias: {
             moment$: 'moment/moment.js',
             d3$: 'd3/d3.min.js'
@@ -28,9 +28,12 @@ module.exports = {
                 test: /jquery\.flot\.resize\.js$/,
                 use: 'imports-loader?this=>window'
             }, {
-                test: /\.js/,
-                use: 'imports-loader?define=>false'
-            }, {
+            test: /\.js/,
+            use: 'imports-loader?define=>false'
+        }, {
+            test: /\.json/,
+            use: 'json-loader'
+        }, {
                 test: /\.jsx?$/,
                 exclude: /(node_modules|bower_components)/,
                 use: 'react-hot-loader'

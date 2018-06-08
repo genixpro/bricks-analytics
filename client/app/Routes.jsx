@@ -48,10 +48,10 @@ messagingClient.connect("guest", "guest", () => {}, onError);
 // listed here to Switch between layouts
 // depending on the current pathname
 const listofPages = [
-    '/login/callback',
-    '/login',
-    '/minipos',
-    '/minipos_secondary',
+    /\/login\/callback/,
+    /\/login/,
+    /\/minipos\/\d+/,
+    /\/minipos_secondary\/\d+/
     /* See full project for reference */
 ];
 
@@ -102,15 +102,15 @@ const Routes = ({location}) => {
     //      'rag-zoomBackDown'
     const animationName = 'rag-fadeIn'
 
-    if (listofPages.indexOf(location.pathname) > -1) {
+    if (_.any(listofPages, (path) => path.test(location.pathname))) {
         return (
             // Page Layout component wrapper
             <BasePage>
                 <Switch location={location}>
                     <Route path="/login/callback" render={(props) => <AuthCallback auth={auth} {...props} />}/>
                     <Route path="/login" render={(props) => <Login auth={auth} {...props} />}/>
-                    <Route path="/minipos" render={(props) => <MiniPOS  {...props} />} />
-                    <Route path="/minipos_secondary" render={(props) => <MiniPOSSecondaryScreen  {...props} />} />
+                    <PrivateRoute path="/minipos/:storeId" component={MiniPOS} />
+                    <PrivateRoute path="/minipos_secondary/:storeId" component={MiniPOSSecondaryScreen} />
                     {/* See full project for reference */}
                 </Switch>
             </BasePage>

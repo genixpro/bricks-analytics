@@ -7,8 +7,8 @@ import MiniPosReceiptArea from './mini_pos_receipt_area';
 import axios from "axios/index";
 
 class MiniPos extends React.Component {
-    constructor() {
-        super();
+    constructor(props) {
+        super(props);
         this.state = {
             items: [],
             subtotal: 0,
@@ -17,7 +17,20 @@ class MiniPos extends React.Component {
             lostSales: {}
         };
 
-        this.secondaryWindow = window.open("/minipos_secondary", "secondaryWindow", "width=1024,height=768");
+        this.secondaryWindow = window.open("/minipos_secondary/" + props.match.params.storeId, "secondaryWindow", "width=1024,height=768");
+    }
+
+    componentDidMount() {
+        if (!this.state.store)
+        {
+            axios({
+                method: 'get',
+                url: '/store/' + this.props.match.params.storeId,
+            }).then((response) =>
+            {
+                this.setState({store: response.data})
+            });
+        }
     }
 
 
@@ -84,13 +97,16 @@ class MiniPos extends React.Component {
             }
             else {
                 let newItem = null;
-                if (barcodeNumber === "1") {
-                    newItem = {
-                        "name": "onion",
-                        "price": 3.99,
-                        "quantity": 1,
-                        "barcode": barcodeNumber
-                    }
+
+                if (this.state.store.inventory)
+                {
+                    this.state.store.inventory.forEach((item) => {
+                        if (item.barcode === barcodeNumber)
+                        {
+                            newItem = _.clone(item);
+                            newItem.quantity = 1;
+                        }
+                    });
                 }
 
                 if (newItem) {
@@ -145,7 +161,7 @@ class MiniPos extends React.Component {
             method: 'post',
             url: '/transactions',
             data: {
-                timestamp: new Date().toISOString(),
+                timestamp: new Date().toISOString().substr(0, new Date().toISOString().length -1), // Cut off last character
                 items: this.state.items,
                 subtotal: this.state.subtotal,
                 taxes: this.state.taxes,
@@ -174,6 +190,11 @@ class MiniPos extends React.Component {
 
 
     render() {
+        if (!this.state.store)
+        {
+            return <div />
+        }
+
         return (
             <Grid fluid={true} className={"mini_pos"}>
                 <div className={"left-half"} onClick={this.onReceiptAreaClicked.bind(this)}>
@@ -206,25 +227,28 @@ class MiniPos extends React.Component {
                                         <Well onClick={this.resetHideLostSaleWidgetTimeout.bind(this)} bsSize="small" >
                                             <p>
                                                 <span>LS:&nbsp;&nbsp;</span>
-                                                <Checkbox checked={this.state.lostSales['chips']} onChange={this.toggleLostSale.bind(this, "chips")}>
-                                                    Chips
-                                                </Checkbox>
-                                                <Checkbox checked={this.state.lostSales['guacamole']} onChange={this.toggleLostSale.bind(this, "guacamole")}>
-                                                    Guacamole
-                                                </Checkbox>
-                                                <Checkbox checked={this.state.lostSales['deodorant']} onChange={this.toggleLostSale.bind(this, "deodorant")}>
-                                                    Deodorant
-                                                </Checkbox>
-                                                <Checkbox checked={this.state.lostSales['shaving']} onChange={this.toggleLostSale.bind(this, "shaving")}>
-                                                    Shaving Cream
-                                                </Checkbox>
+                                                {
+                                                    this.state.store.inventory.map((item) =>
+                                                    {
+                                                        if (!item.lsCode)
+                                                        {
+                                                            return null;
+                                                        }
+                                                        else
+                                                        {
+                                                            return <Checkbox checked={this.state.lostSales[item.barcode]} onChange={this.toggleLostSale.bind(this, item.barcode)}>
+                                                                {item.lsCode}
+                                                            </Checkbox>;
+                                                        }
+                                                    })
+                                                }
                                             </p>
                                         </Well>
                                         : null
                                 }
                             </div>
                         </div>
-                        <Button className={"show-lost-sales-button"} bsStyle={'default pull-right'} onClick={this.toggleLostSaleOptions.bind(this)}>
+                        <Button className={"show-lost-sales-button pull-right"} bsStyle={'default'} onClick={this.toggleLostSaleOptions.bind(this)}>
                             {
                                 this.state.showLostSales
                                     ? <i className={"fa fa-eye-slash"}/>

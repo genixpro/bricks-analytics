@@ -27,6 +27,11 @@
             }
           }
         },
+        "lostSales": {
+          "description": "This part of the schema is used just for demo override purposes. Its not expected to receive this data from a POS terminal.",
+          "type": "array",
+          "items": {"type": "string"}
+        },
         "subtotal": {"type": "number"},
         "taxes": {"type": "number"},
         "total": {"type": "number"}

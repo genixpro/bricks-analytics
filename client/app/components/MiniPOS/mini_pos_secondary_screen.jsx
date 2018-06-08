@@ -4,6 +4,7 @@ import {Button, Grid, Row, Col, Dropdown, MenuItem, Well, Table, Checkbox} from 
 import _ from 'underscore';
 import NumberFormat from 'react-number-format';
 import MiniPosReceiptArea from './mini_pos_receipt_area';
+import axios from "axios/index";
 
 class MiniPosSecondaryScreen extends React.Component {
     constructor() {
@@ -21,11 +22,21 @@ class MiniPosSecondaryScreen extends React.Component {
         };
     }
 
-
     componentDidMount()
     {
-        console.log("adding event listener");
         window.addEventListener("message", this.windowMessageListener, false);
+
+        // Load the store info if needed.
+        if (!this.state.store)
+        {
+            axios({
+                method: 'get',
+                url: '/store/' + this.props.match.params.storeId,
+            }).then((response) =>
+            {
+                this.setState({store: response.data})
+            });
+        }
     }
 
 
@@ -36,6 +47,11 @@ class MiniPosSecondaryScreen extends React.Component {
     }
 
     render() {
+        if (!this.state.store)
+        {
+            return <div />
+        }
+
         return (
             <Grid fluid={true} className={"mini_pos"}>
                 <div className={"left-half"}>
