@@ -106,9 +106,6 @@ class TimeSeriesAnalyzer:
 
                 visitorSummary = self.visitSummarizer.createVisitSummary(person['visitorId'], framesWithPerson, store)
 
-                if len(visitorSummary['transactions']) > 0:
-                    pprint(visitorSummary)
-
                 visitorsCollection.insert(visitorSummary)
 
         amqpChannel = self.getMessagingChannel()

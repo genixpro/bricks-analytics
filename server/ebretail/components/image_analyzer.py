@@ -634,10 +634,10 @@ class ImageAnalyzer:
 
             # If we can't get a decent sized cropped image, and there is already an
             # image, then ignore this one.
-            if ((cropRight - cropLeft) < 100 or (cropBottom - cropTop) < 100):
+            if ((cropRight - cropLeft) < 10 or (cropBottom - cropTop) < 10):
                 continue
 
-            croppedImage = image[int(cropTop):int(cropBottom), int(cropLeft):int(cropRight)]
+            croppedImage = np.copy(image[int(cropTop):int(cropBottom), int(cropLeft):int(cropRight)])
             croppedImage = cv2.cvtColor(croppedImage, cv2.COLOR_BGR2RGB)
 
             cv2.rectangle(croppedImage, (int(personWithinCropLeft), int(personWithinCropTop)), (int(personWithinCropRight), int(personWithinCropBottom)), (0, 255, 0), 3)

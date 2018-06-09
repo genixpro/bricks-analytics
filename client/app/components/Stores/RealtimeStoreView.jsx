@@ -20,10 +20,7 @@ class RealtimeStoreView extends React.Component {
         {
             const body = JSON.parse(message.body);
 
-            if (body.people.length > 0)
-            {
-                this.setState({frame: body});
-            }
+            this.setState({frame: body});
         }, headers);
     }
 
