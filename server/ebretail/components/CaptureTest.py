@@ -468,6 +468,10 @@ class CaptureTest:
     def runSimulation(self):
         timeStamp = datetime.datetime.now()
 
+        # Upload the calibration images to the image processor
+        for imageIndex, image in enumerate(self.calibrationImages):
+            self.uploadImageToProcessor(image, timeStamp, imageIndex)
+
         for i in range(self.testData['numberOfImages']):
             imagePath = os.path.join(os.path.dirname(sys.argv[1]), self.testData['directory'],
                                      'image-' + str(i).zfill(5) + '.jpg')

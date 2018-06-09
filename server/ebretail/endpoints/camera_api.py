@@ -101,12 +101,15 @@ class CameraFrames(object):
         cameraId = self.request.matchdict['cameraId']
 
         query = {
-            "metadata.storeId": storeId,
-            "metadata.cameraId": cameraId,
+            "storeId": storeId,
+            "cameraId": cameraId,
         }
         sort = []
 
         if self.request.matchdict['frameNumber'] == 'current':
+            sort.append(('frameNumber', -1))
+        elif self.request.matchdict['frameNumber'] == 'calibration':
+            query['calibrationObject'] = {"$type": "object"}
             sort.append(('frameNumber', -1))
         else:
             query['frameNumber'] = int(self.request.matchdict['frameNumber'])

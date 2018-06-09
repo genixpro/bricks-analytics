@@ -89,22 +89,19 @@
             }
           }
         },
-        "calibrationObjects": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "points": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "x": {
-                      "type": "number"
-                    },
-                    "y": {
-                      "type": "number"
-                    }
+        "calibrationObject": {
+          "type": ["object", "null"],
+          "properties": {
+            "points": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
                   }
                 }
               }

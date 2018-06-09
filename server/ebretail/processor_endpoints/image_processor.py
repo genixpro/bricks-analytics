@@ -96,7 +96,7 @@ def processImage(request):
                 r = requests.post(mainServerURL, json=singleCameraFrame)
 
                 # If recording is enabled, save the debug image
-                if metadata['record']:
+                if singleCameraFrame['calibrationObject'] is not None:
                     recordMetadata = {
                         "storeId": metadata['storeId'],
                         "cameraId": metadata['cameraId'],

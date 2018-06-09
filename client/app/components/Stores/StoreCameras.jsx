@@ -24,6 +24,7 @@ class StoreCameras extends React.Component {
             cameraRotation: 0,
             calibrationObjectX: 0,
             calibrationObjectY: 0,
+            calibrationObjectSize: 0,
             calibrationObjectRotation: 0
         };
 
@@ -57,7 +58,7 @@ class StoreCameras extends React.Component {
     {
         axios({
             method: 'get',
-            url: `/store/${this.props.store._id}/cameras/${this.camera.cameraId}/frame/current`
+            url: `/store/${this.props.store._id}/cameras/${this.camera.cameraId}/frame/calibration`
         }).then((response) =>
         {
             this.setState({cameraFrame: response.data});
@@ -125,7 +126,10 @@ class StoreCameras extends React.Component {
     calibrateCameraClicked(event)
     {
         document.getElementById('store-layout').scrollIntoView(true);
-        this.setState({isSelectingCameraLocation: true});
+        this.setState({
+            isSelectingCameraLocation: true,
+            calibrationObjectSize: 100
+        });
     }
 
     /**
@@ -151,6 +155,16 @@ class StoreCameras extends React.Component {
 
             this.setState({calibrationObjectX, calibrationObjectY});
             this.updateCalibrationRotation();
+        }
+    }
+
+    onWheelMoved(event)
+    {
+        if (this.state.isSelectingCalibrationObjectLocation)
+        {
+            const newSize = Math.max(5, this.state.calibrationObjectSize - 2 * Math.sign(event.deltaY));
+            this.setState({calibrationObjectSize: newSize});
+            event.preventDefault();
         }
     }
 
@@ -180,18 +194,48 @@ class StoreCameras extends React.Component {
             });
             this.updateCalibrationRotation();
 
+
+            const storeImageElem = document.getElementById('store-image');
+            const bounds = document.getElementById('store-image-container').getBoundingClientRect();
+
+
             // Make the modification to the camera data.
             const newStore = this.props.store;
-            const camera = _.findWhere(newStore.cameras, {id: this.state.selectedCamera});
-            camera.cameraX = this.state.cameraX;
-            camera.cameraY = this.state.cameraY;
-            camera.cameraRotation = this.state.cameraRotation;
+            const camera = _.findWhere(newStore.cameras, {cameraId: this.state.selectedCamera});
 
-            console.log(this.state.cameraFrame);
+            camera.calibrationReferencePoint = {
+                "x": ((this.state.calibrationObjectX - this.state.calibrationObjectSize/2) / bounds.width) * storeImageElem.naturalWidth,
+                "y": ((this.state.calibrationObjectY - this.state.calibrationObjectSize/2) / bounds.height) * storeImageElem.naturalHeight,
+                "unitWidth": (this.state.calibrationObjectSize / bounds.width / 5) * storeImageElem.naturalWidth,
+                "unitHeight": (this.state.calibrationObjectSize / bounds.height / 5) * storeImageElem.naturalHeight
+            };
+
+            if (this.state.cameraRotation <= (Math.PI / 4) || this.state.cameraRotation >= (Math.PI * 7.0 / 4.0))
+            {
+                camera.calibrationReferencePoint.direction = 'north';
+            }
+            else if (this.state.cameraRotation >= (Math.PI / 4) && this.state.cameraRotation <= (Math.PI * 3.0 / 4.0))
+            {
+                camera.calibrationReferencePoint.direction = 'east';
+            }
+            else if (this.state.cameraRotation >= (Math.PI * 3.0 / 4.0) && this.state.cameraRotation <= (Math.PI * 5.0 / 4.0))
+            {
+                camera.calibrationReferencePoint.direction = 'south';
+            }
+            else if (this.state.cameraRotation >= (Math.PI * 5.0 / 4.0) && this.state.cameraRotation <= (Math.PI * 7.0 / 4.0))
+            {
+                camera.calibrationReferencePoint.direction = 'west';
+            }
+
+            camera.cameraLocation = {
+                "x": (this.state.cameraX / bounds.width) * storeImageElem.offsetWidth,
+                "y": (this.state.cameraY / bounds.height) * storeImageElem.offsetHeight,
+            };
 
             camera.cameraMatrix = this.state.cameraFrame.calibrationObject.cameraMatrix;
             camera.rotationVector = this.state.cameraFrame.calibrationObject.rotationVector;
             camera.translationVector = this.state.cameraFrame.calibrationObject.translationVector;
+            camera.distortionCoefficients = this.state.cameraFrame.calibrationObject.distortionCoefficients;
 
             this.props.updateStore(newStore);
         }
@@ -288,88 +332,98 @@ class StoreCameras extends React.Component {
                                     </div>
                                 </div>
                             </Col>
-                            {/*<Col md={3}>*/}
-                                {/*<div className="panel b">*/}
-                                    {/*<div className="panel-heading">*/}
-                                        {/*<h4 className="m0">Calibration</h4>*/}
-                                    {/*</div>*/}
-                                    {/*<div className="panel-body">*/}
-                                        {/*{this.state.cameraFrame ?*/}
-                                            {/*this.state.cameraFrame.calibrationObject ?*/}
-                                                {/*<div>*/}
-                                                    {/*<p>Success! The calibration checkboard is detected.</p>*/}
-                                                    {/*<button type="button" className="btn btn-default" onClick={this.calibrateCameraClicked.bind(this)}>Recalibrate</button>*/}
-                                                {/*</div>*/}
-                                                {/*:*/}
-                                                {/*<div>*/}
-                                                    {/*<p>The calibration checkboard is not detected. Please make sure the calibration checkboard is in view of this camera, and is aligned in the same direction as the camera.</p>*/}
-                                                {/*</div>*/}
-                                            {/*:*/}
-                                            {/*<div>Loading calibration data...</div>*/}
-                                        {/*}*/}
-                                    {/*</div>*/}
-                                {/*</div>*/}
-                            {/*</Col>*/}
+                            <Col md={3}>
+                                <div className="panel b">
+                                    <div className="panel-heading">
+                                        <h4 className="m0">Calibration</h4>
+                                    </div>
+                                    <div className="panel-body">
+                                        {this.state.cameraFrame ?
+                                            this.state.cameraFrame.calibrationObject ?
+                                                <div>
+                                                    <p>Success! The calibration checkboard is detected.</p>
+                                                    <button type="button" className="btn btn-default" onClick={this.calibrateCameraClicked.bind(this)}>Recalibrate</button>
+                                                </div>
+                                                :
+                                                <div>
+                                                    <p>The calibration checkboard is not detected. Please make sure the calibration checkboard is in view of this camera, and is aligned in the same direction as the camera.</p>
+                                                </div>
+                                            :
+                                            <div>Loading calibration data...</div>
+                                        }
+                                    </div>
+                                </div>
+                            </Col>
                         </div>
 
-                        {/*<div className="panel b" id="store-layout">*/}
-                            {/*<div className="panel-heading">*/}
-                                {/*<h4 className="m0">Location</h4>*/}
-                            {/*</div>*/}
+                        <div className="panel b" id="store-layout">
+                            <div className="panel-heading">
+                                <h4 className="m0">Location</h4>
+                            </div>
 
-                            {/*<div className="panel-body">*/}
-                                {/*{this.props.showUpdateSuccess &&*/}
-                                    {/*<Alert bsStyle="success">*/}
-                                        {/*<p>Successfully updated the camera location.</p>*/}
-                                    {/*</Alert>*/}
-                                {/*}*/}
+                            <div className="panel-body">
+                                {this.props.showUpdateSuccess &&
+                                    <Alert bsStyle="success">
+                                        <p>Successfully updated the camera location.</p>
+                                    </Alert>
+                                }
 
-                                {/*{this.props.showUpdateFailure &&*/}
-                                    {/*<Alert bsStyle="danger">*/}
-                                        {/*<p>Failed to update the camera location.</p>*/}
-                                    {/*</Alert>*/}
-                                {/*}*/}
+                                {this.props.showUpdateFailure &&
+                                    <Alert bsStyle="danger">
+                                        <p>Failed to update the camera location.</p>
+                                    </Alert>
+                                }
 
-                                {/*<div className="store-image-container" id="store-image-container">*/}
-                                    {/*{this.props.isUpdatingStore &&*/}
-                                        {/*<div className="updatingOverlay">*/}
-                                            {/*<div className="spinnerWrapper">*/}
-                                                {/*<div className="sk-three-bounce">*/}
-                                                    {/*<div className="sk-child sk-bounce1"></div>*/}
-                                                    {/*<div className="sk-child sk-bounce2"></div>*/}
-                                                    {/*<div className="sk-child sk-bounce3"></div>*/}
-                                                {/*</div>*/}
-                                            {/*</div>*/}
-                                        {/*</div>*/}
-                                    {/*}*/}
+                                <div className="store-image-container" id="store-image-container">
+                                    {this.props.isUpdatingStore &&
+                                        <div className="updatingOverlay">
+                                            <div className="spinnerWrapper">
+                                                <div className="sk-three-bounce">
+                                                    <div className="sk-child sk-bounce1"></div>
+                                                    <div className="sk-child sk-bounce2"></div>
+                                                    <div className="sk-child sk-bounce3"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
 
-                                    {/*{this.state.isSelectingCalibrationObjectLocation &&*/}
-                                        {/*<img id="calibration-object-location"*/}
-                                             {/*src='/img/checkerboard.png'*/}
-                                             {/*style={{*/}
-                                                 {/*"left": this.state.calibrationObjectX - checkerboardImageOffsetX,*/}
-                                                 {/*"top": this.state.calibrationObjectY - checkerboardImageOffsetY,*/}
-                                                 {/*"transform": 'rotate(' + this.state.cameraRotation + "rad)"}}*/}
-                                             {/*onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}*/}
-                                             {/*onClick={this.calibrationObjectLocationChosen.bind(this)}*/}
-                                        {/*/>*/}
-                                    {/*}*/}
-                                    {/*<img id="camera-location"*/}
-                                         {/*src='/img/video-camera-icon.png'*/}
-                                         {/*style={{*/}
-                                             {/*"left": this.state.cameraX - cameraImageOffsetX,*/}
-                                             {/*"top": this.state.cameraY - cameraImageOffsetY,*/}
-                                             {/*"transform": 'rotate(' + this.state.cameraRotation + "rad)"}}*/}
-                                         {/*onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}*/}
-                                         {/*onClick={this.cameraLocationChosen.bind(this)}*/}
-                                    {/*/>*/}
-                                    {/*<img id="store-image"*/}
-                                         {/*src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout"}*/}
-                                         {/*onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}*/}
-                                    {/*/>*/}
-                                {/*</div>*/}
-                            {/*</div>*/}
-                        {/*</div>*/}
+                                    {this.state.isSelectingCalibrationObjectLocation &&
+                                        <img id="calibration-object-location"
+                                             src='/img/checkerboard.png'
+                                             style={{
+                                                 "left": this.state.calibrationObjectX - this.state.calibrationObjectSize/2,
+                                                 "top": this.state.calibrationObjectY - this.state.calibrationObjectSize/2,
+                                                 "width": this.state.calibrationObjectSize,
+                                                 "height": this.state.calibrationObjectSize
+                                             }}
+                                             onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
+                                             onWheel={this.onWheelMoved.bind(this)}
+                                             onClick={this.calibrationObjectLocationChosen.bind(this)}
+                                        />
+                                    }
+                                    {   (this.state.isSelectingCameraLocation ||
+                                        this.state.isSelectingCalibrationObjectLocation) &&
+                                        <img id="camera-location"
+                                             src='/img/video-camera-icon.png'
+                                             style={{
+                                                 "left": this.state.cameraX - cameraImageOffsetX,
+                                                 "top": this.state.cameraY - cameraImageOffsetY,
+                                                 "transform": 'rotate(' + this.state.cameraRotation + "rad)"
+                                             }}
+                                             onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
+                                             onWheel={this.onWheelMoved.bind(this)}
+                                             onClick={this.cameraLocationChosen.bind(this)}
+                                        />
+                                    }
+                                    <img id="store-image"
+                                         className="store-image"
+                                         src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout"}
+                                         onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
+                                         onWheel={this.onWheelMoved.bind(this)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </Col>
                     }
                 </Row>

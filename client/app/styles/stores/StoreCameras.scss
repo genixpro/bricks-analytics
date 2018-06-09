@@ -2,6 +2,19 @@
 
 .store-cameras {
 
+  .store-image-container {
+    display: block;
+    border: 1px inset grey;
+    padding: 10px;
+    margin: 10px;
+    position: relative;
+    cursor: pointer;
+
+    img.store-image {
+      width: 100%;
+    }
+  }
+
   .live-image
   {
     height: 500px;

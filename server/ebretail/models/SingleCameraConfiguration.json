@@ -12,6 +12,9 @@
         "cameraId": {
           "type": "string"
         },
+        "cameraLocation": {
+          "$ref": "Coordinate.json#/definitions/Coordinate"
+        },
         "calibrationReferencePoint": {
           "$ref": "Coordinate.json#/definitions/Coordinate",
           "type": "object",
