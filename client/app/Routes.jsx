@@ -10,7 +10,6 @@ import NewStore from './components/Stores/NewStore';
 import FindStore from './components/Stores/FindStore';
 import ViewStore from './components/Stores/ViewStore';
 import StoreDetails from './components/Stores/StoreDetails';
-import StoreImageProcessors from './components/Stores/StoreImageProcessors';
 import StoreCameras from './components/Stores/StoreCameras';
 import Login from './components/Authentication/Login';
 import AuthCallback from './components/Authentication/AuthCallback';

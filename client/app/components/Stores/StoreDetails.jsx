@@ -16,41 +16,6 @@ class StoreDetails extends React.Component {
         super(props);
     }
 
-    componentDidMount()
-    {
-        var headers = {durable: false, "auto-delete": false, exclusive: false};
-        this.storeSubscription = this.props.messagingClient.subscribe("/exchange/store-frames-" + this.props.store._id, (message) =>
-        {
-            const body = JSON.parse(message.body);
-            this.setState({frame: body});
-        }, headers);
-    }
-
-
-    /**
-     * Triggered when this component is being removed from the screen
-     */
-    componentWillUnmount()
-    {
-        if (this.storeSubscription)
-        {
-            this.storeSubscription.unsubscribe();
-        }
-    }
-
-    shouldComponentUpdate(nextProps, nextState)
-    {
-        if (nextProps.store._id !== this.props.store._id)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-
     uploadNewStoreMap()
     {
         const upload = document.createElement('input');
@@ -104,11 +69,8 @@ class StoreDetails extends React.Component {
 
     render() {
 
-        const personImageOffsetX = 32;
-        const personImageOffsetY = 32;
-
         return (
-            <div>
+            <div className={"store-details"}>
                 <br/>
                 <Panel header="Store Details">
                     <Row>
@@ -117,18 +79,6 @@ class StoreDetails extends React.Component {
                             <div className="storeMap" onClick={this.uploadNewStoreMap.bind(this)}>
                                 <i className="fa fa-upload" />
                                 <img className='store-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout?" + this.props.editorState.storeLayoutCacheBreaker} />
-
-                                {this.props.frame &&
-                                this.props.frame.people.map((person) =>
-                                    <img className="person-location"
-                                         src='/img/person.png'
-                                         style={{
-                                             "left": person[1][0] - personImageOffsetX + 300,
-                                             "top": person[1][1] - personImageOffsetY + 300
-                                         }}
-                                    />
-                                )
-                                }
 
                                 <div className="overlay"></div>
 

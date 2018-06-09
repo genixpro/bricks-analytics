@@ -81,6 +81,6 @@ class MultiImageAnalyzer:
         multiCameraFramesCollection.update_one({"_id": frame['_id']}, {"$set": newMultiCameraFrame})
 
         amqpChannel = self.getMessagingChannel()
-        exchangeId = 'store-frames-' + str(frame['storeId'])
+        exchangeId = 'store-multi-camera-frames-' + str(frame['storeId'])
         amqpChannel.exchange_declare(exchange=exchangeId, exchange_type='fanout')
         amqpChannel.basic_publish(exchange=exchangeId, routing_key='', body=bson.json_util.dumps(frame))

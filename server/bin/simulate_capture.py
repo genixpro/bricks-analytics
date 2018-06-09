@@ -34,5 +34,8 @@ if __name__ == '__main__':
     test.registerStore()
     test.registerCameras()
     test.uploadStoreMap()
-    test.runSimulation()
+
+    # Keep running and rerunning the simulation
+    while True:
+        test.runSimulation()
 

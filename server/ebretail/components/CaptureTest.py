@@ -484,7 +484,7 @@ class CaptureTest:
             timeStamp = timeStamp + datetime.timedelta(seconds=0.5)
 
         # Now send up a few blank images to force the system to finish all of the tracks.
-        for i in range(10):
+        for i in range(5):
             for cameraIndex in range(len(self.testData['cameras'])):
                 image = Image.new('RGB', (self.testData['cameras'][cameraIndex]['width'], self.testData['cameras'][cameraIndex]['height']), (0,0,0))
                 self.uploadImageToProcessor(numpy.array(image), timeStamp, cameraIndex)
