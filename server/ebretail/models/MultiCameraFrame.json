@@ -32,6 +32,12 @@
               },
               "y": {
                 "type": "number"
+              },
+              "averageFeatureVector": {
+                "type": "array",
+                "min": 128,
+                "max": 128,
+                "items": {"type": "number"}
               }
             }
           }

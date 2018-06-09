@@ -26,6 +26,8 @@ from skimage import io
 from sklearn.utils.linear_assignment_ import linear_assignment
 import glob
 import time
+import scipy.spatial
+import scipy.special
 import argparse
 from filterpy.kalman import KalmanFilter
 import math
@@ -102,6 +104,7 @@ class KalmanBoxTracker(object):
     self.hits = 0
     self.hit_streak = 0
     self.age = 0
+    self.featureVector = None
 
   def update(self,bbox):
     """
@@ -133,7 +136,7 @@ class KalmanBoxTracker(object):
     """
     return convert_x_to_bbox(self.kf.x)
 
-def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0): #Note Electric Brain has modified this iou threshhold down to 0
+def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0.2, feature_vector_threshold = 0.3, euclid_threshold = 200):
   """
   Assigns detections to tracked object (both represented as bounding boxes)
 
@@ -145,8 +148,20 @@ def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0
 
   for d,det in enumerate(detections):
     for t,trk in enumerate(trackers):
+      # Compute similarity metric for their feature vectors
+      if np.count_nonzero(det[4:]) == 0 or np.count_nonzero(trk[4:]) == 0:
+        similarityMetric = 0
+      else:
+        similarityMetric = 1.0 - scipy.spatial.distance.cosine(det[4:], trk[4:])
+
       if mode == 'iou':
-        iou_matrix[d,t] = iou(det,trk)
+        if similarityMetric < feature_vector_threshold:
+          similarityMetric = 0.0
+        iou_metric = iou(det,trk)
+
+        finalMetric = iou_metric + similarityMetric*1.5
+
+        iou_matrix[d, t] = finalMetric
       elif mode == 'euclidean':
         cx1 = det[0]/2 + det[2]/2
         cy1 = det[1]/2 + det[3]/2
@@ -155,7 +170,10 @@ def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0
         cy2 = trk[1]/2 + trk[3]/2
 
         dist = math.sqrt((cx2-cx1)*(cx2-cx1) + (cy2-cy1)*(cy2-cy1))
-        iou_matrix[d,t] = -dist
+
+        distMetric = scipy.special.expit(dist / (euclid_threshold / 2))
+
+        iou_matrix[d,t] = similarityMetric * 2.0 - distMetric
 
   matched_indices = linear_assignment(-iou_matrix)
 
@@ -171,7 +189,7 @@ def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0
   #filter out matched with low IOU
   matches = []
   for m in matched_indices:
-    if(iou_matrix[m[0],m[1]]<iou_threshold and mode == 'iou'):
+    if(iou_matrix[m[0],m[1]]<iou_threshold):
       unmatched_detections.append(m[0])
       unmatched_trackers.append(m[1])
     else:
@@ -187,7 +205,7 @@ def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0
 
 
 class Sort(object):
-  def __init__(self,max_age=1,min_hits=3, mode='iou'):
+  def __init__(self,max_age=1,min_hits=3, featureVectorSize = 0, mode='iou'):
     """
     Sets key parameters for SORT
     """
@@ -196,6 +214,7 @@ class Sort(object):
     self.trackers = []
     self.frame_count = 0
     self.mode = mode
+    self.featureVectorSize = featureVectorSize
 
   def update(self,dets):
     """
@@ -208,12 +227,13 @@ class Sort(object):
     """
     self.frame_count += 1
     #get predicted locations from existing trackers.
-    trks = np.zeros((len(self.trackers),5))
+    trks = np.zeros((len(self.trackers), self.featureVectorSize + 4))
     to_del = []
     ret = []
     for t,trk in enumerate(trks):
       pos = self.trackers[t].predict()[0]
-      trk[:] = [pos[0], pos[1], pos[2], pos[3], 0]
+      trk[:4] = [pos[0], pos[1], pos[2], pos[3]]
+      trk[4:] = self.trackers[t].featureVector
       if(np.any(np.isnan(pos))):
         to_del.append(t)
     trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
@@ -226,17 +246,24 @@ class Sort(object):
     for trk in self.trackers:
       trk.detIndex = -1
 
-    #update matched trackers with assigned detections
+    #update matched trackers with assigned detections and update the feature vector
     for t,trk in enumerate(self.trackers):
       if(t not in unmatched_trks):
         d = matched[np.where(matched[:,1]==t)[0],0]
-        trk.update(dets[d,:][0])
+        trk.update(dets[d,:][0][:4])
         trk.detIndex = d
+
+        # Update the feature vector using an exponential rolling average. This helps smooth out any sudden poor detections which
+        # can screw up the feature vector, even if they are tracked well
+        newFeatureVector = dets[d,:][0][4:]
+        if np.count_nonzero(newFeatureVector) > 0:
+          trk.featureVector = (trk.featureVector * 0.7) + (newFeatureVector * 0.3)
 
     #create and initialise new trackers for unmatched detections
     for i in unmatched_dets:
         trk = KalmanBoxTracker(dets[i,:])
         trk.detIndex = i
+        trk.featureVector = dets[i,:][4:]
         self.trackers.append(trk)
 
     i = len(self.trackers)

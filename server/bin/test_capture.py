@@ -25,6 +25,8 @@ if __name__ == '__main__':
     if len(sys.argv) != 2:
         usage(sys.argv)
 
+    useCache = True
+
     test = CaptureTest(sys.argv[1])
     
     test.loadStoreMap()
@@ -36,7 +38,7 @@ if __name__ == '__main__':
 
     # Either load the singleCameraFrame objects from a cache, or compute them fresh
     cacheFileName = sys.argv[1] + "-cached.json"
-    if os.path.exists(cacheFileName):
+    if os.path.exists(cacheFileName) and useCache:
         resultSingleCameraFrames = json.load(open(cacheFileName, 'r'))
         resultDebugImages = [[] for fame in range(test.testData['numberOfImages'])]
     else:

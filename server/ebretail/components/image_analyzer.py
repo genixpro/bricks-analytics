@@ -16,6 +16,7 @@ import scipy
 import scipy.spatial
 import cv2
 import json
+import uuid
 import datetime
 import math
 import skimage.util
@@ -40,6 +41,7 @@ from blur_detection import estimate_blur
 from blur_detection import fix_image_size
 from blur_detection import pretty_blur_map
 
+import tensorflow as tf
 
 globalSharedInstanceLock = threading.RLock()
 globalSharedInstance = None
@@ -60,6 +62,8 @@ class ImageAnalyzer:
         self.sm = SpatialModel(self.cfg)
         self.sm.load()
         self.draw_multi = PersonDraw()
+
+        self.trackingSession = None
 
         # How frequent does the person detector run
         self.personDetectorFrequency = 1
@@ -91,6 +95,60 @@ class ImageAnalyzer:
             'right_foot'
         ]
 
+    def initializeTrackingSession(self):
+        trackingCheckpointFilename = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", "lib", "deep-sort", "mars-small128.pb")
+        trackingInputName = 'images'
+        trackingOutputName = 'features'
+        
+        config = tf.ConfigProto(
+            device_count={'GPU': 0}
+        )
+        self.trackingSession = tf.Session(config=config)
+        with tf.gfile.GFile(trackingCheckpointFilename, "rb") as file_handle:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(file_handle.read())
+        tf.import_graph_def(graph_def, name="net")
+        self.trackingInputVar = tf.get_default_graph().get_tensor_by_name("net/%s:0" % trackingInputName)
+        self.trackingOutputVar = tf.get_default_graph().get_tensor_by_name("net/%s:0" % trackingOutputName)
+        self.trackingFeatureDim = self.trackingOutputVar.get_shape().as_list()[-1]
+        self.trackingImageShape = self.trackingInputVar.get_shape().as_list()[1:]
+
+    def extractTrackingCrop(self, image, bbox, crop_shape, padding=50):
+        """Extract image patch for a given bounding box, to be used in creating the tracking sort metric.
+            :param image: A numpy array representing the image
+            :param box: Bounding box for the person
+            :param crop_shape: Bounding box for the person
+        """
+        width = len(image)
+        height = len(image[0])
+
+        bbox = np.array(bbox)
+
+        bbox[0] -= padding
+        bbox[1] -= padding
+        bbox[2] += padding
+        bbox[3] += padding
+
+        if crop_shape is not None:
+            # correct aspect ratio to patch shape
+            target_aspect = float(crop_shape[1]) / crop_shape[0]
+            new_width = target_aspect * (bbox[3] - bbox[1])
+
+            bbox[0] -= (new_width - (bbox[2] - bbox[0])) / 2
+            bbox[2] += (new_width - (bbox[2] - bbox[0])) / 2
+
+        bbox = bbox.astype(np.int)
+
+        # clip at image boundaries
+        bbox[:2] = np.maximum(0, bbox[:2])
+        bbox[2:] = np.minimum(np.array([height-1, width-1]), bbox[2:])
+        if np.any(bbox[:2] >= bbox[2:]):
+            return None
+        sx, sy, ex, ey = bbox
+        image = image[sy:ey, sx:ex]
+        image = cv2.resize(image, tuple(crop_shape[::-1]))
+        return image
+    
     def processSingleCameraImage(self, image, metadata, state, debugImage):
         """
             This method is used to process a single image from a single camera. It produces a SingleCameraFrame object.
@@ -293,6 +351,7 @@ class ImageAnalyzer:
                             "x": x,
                             "y": y,
                             "detectionIds": [person['detectionId']],
+                            "averageFeatureVector": person['featureVector'],
                             "cameraIds": [cameraInfo['cameraId']]
                         })
 
@@ -343,8 +402,17 @@ class ImageAnalyzer:
 
                 mergePerson1['detectionIds'] = mergePerson1['detectionIds'] + mergePerson2['detectionIds']
                 mergePerson1['cameraIds'] = mergePerson1['cameraIds'] + mergePerson2['cameraIds']
+                if mergePerson1['averageFeatureVector'] is not None and mergePerson2['averageFeatureVector'] is not None:
+                    mergePerson1['averageFeatureVector'] = np.array(mergePerson1['averageFeatureVector']) + np.array(mergePerson2['averageFeatureVector'])
+                elif mergePerson1['averageFeatureVector'] is None and mergePerson2['averageFeatureVector'] is not None:
+                    mergePerson1['averageFeatureVector'] = np.array(mergePerson2['averageFeatureVector'])
 
                 del multiCameraFrame['people'][mergePersonIndex2]
+
+        # Now divide all the average feature vectors by the number of detections.
+        for person in multiCameraFrame['people']:
+            if person['averageFeatureVector'] is not None:
+                person['averageFeatureVector'] = (np.array(person['averageFeatureVector']) / len(person['detectionIds'])).tolist()
 
         multiCameraFrame['storeId'] = singleCameraFrames[0]['storeId']
 
@@ -401,8 +469,13 @@ class ImageAnalyzer:
         if not self.poseSess:
             self.poseSess, self.poseInputs, self.poseOutputs = predict.setup_pose_prediction(self.cfg)
 
+        if not self.trackingSession:
+            self.initializeTrackingSession()
+
         if not state:
-            state = {}
+            state = {
+                'stateId': str(uuid.uuid4())
+            }
 
         width = len(image)
         height = len(image[0])
@@ -412,7 +485,7 @@ class ImageAnalyzer:
 
         # Create the tracker if it doesn't exist
         if 'tracker' not in state:
-            state['tracker'] = Sort(max_age=1, min_hits=1.0)
+            state['tracker'] = Sort(max_age=3, min_hits=4.0, featureVectorSize=self.trackingFeatureDim)
 
         tracker = state['tracker']
 
@@ -434,21 +507,25 @@ class ImageAnalyzer:
 
             newPeople = []
 
-            # Filter out detections that have less then 3 keypoints ( use 6 here because there are two dimensions, x and y)
-            peoplePoints = np.array([person for person in peoplePoints if np.count_nonzero(person) >= 6])
+            # Filter out detections that have less then 4 keypoints ( use * 2 here because there are two dimensions, x and y)
+            peoplePoints = np.array([person for person in peoplePoints if (np.count_nonzero(person) / 2) >= 4])
 
             # Now feed these detections through the tracker
             detectionBoxes = []
+            featureVectors = []
             for detectedPersonIndex, detectedPerson in enumerate(peoplePoints):
                 # Compute this persons outer bounding box
                 box = self.boundingBoxForPerson(detectedPerson)
 
-                detectedPointCount = 0
-                for point in detectedPerson:
-                    if point[0] != 0 or point[1] != 0:
-                        detectedPointCount += 1
+                detection = np.array([box['left'], box['top'], box['right'], box['bottom']] + [0] * self.trackingFeatureDim)  # the last entry is the score, which is the number of keypoints detected
 
-                detection = [box['left'], box['top'], box['right'], box['bottom'], detectedPointCount / 17.0]  # the last entry is the score, which is the number of keypoints detected
+                croppedPerson = self.extractTrackingCrop(image, detection[:4], self.trackingImageShape[:-1])
+                if croppedPerson is not None:
+                    featureVector = self.trackingSession.run(self.trackingOutputVar, feed_dict={self.trackingInputVar: [croppedPerson]})
+                    detection[4:] = featureVector[0]
+                    featureVectors.append(featureVector[0].tolist())
+                else:
+                    featureVectors.append(None)
 
                 detectionBoxes.append(detection)
 
@@ -456,6 +533,8 @@ class ImageAnalyzer:
                 cv2.rectangle(debugImage, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (0, 0, 255), 3)
 
             trackedBoxes = tracker.update(np.array(detectionBoxes))
+
+            trackedVectors = [box[5] != -1 and featureVectors[int(box[5])] or None for box in trackedBoxes]
 
             for box in trackedBoxes:
                 cv2.rectangle(debugImage, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (0, 255, 0), 3)
@@ -467,7 +546,7 @@ class ImageAnalyzer:
                 cv2.putText(debugImage, str(int(box[4])), (textX, textY), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
             # Now we have a bunch of tracked boxes. Find which person goes with which tracked box
-            for box in trackedBoxes:
+            for boxIndex, box in enumerate(trackedBoxes):
                 bestMatch = None
                 bestDistance = 0
                 for person in peoplePoints:
@@ -496,7 +575,8 @@ class ImageAnalyzer:
                     personData = {
                         'detectionId': str(int(box[4])),
                         'keypoints': self.getKeypointsObject(bestMatch),
-                        "bounding_box": self.boundingBoxForPerson(bestMatch)
+                        "bounding_box": self.boundingBoxForPerson(bestMatch),
+                        "featureVector": trackedVectors[boxIndex]
                     }
                     newPeople.append(personData)
 
@@ -554,7 +634,7 @@ class ImageAnalyzer:
 
             # If we can't get a decent sized cropped image, and there is already an
             # image, then ignore this one.
-            if ((cropRight - cropLeft) < 100 or (cropBottom - cropTop) < 100) and bestImage is not None:
+            if ((cropRight - cropLeft) < 100 or (cropBottom - cropTop) < 100):
                 continue
 
             croppedImage = image[int(cropTop):int(cropBottom), int(cropLeft):int(cropRight)]
@@ -656,7 +736,7 @@ class ImageAnalyzer:
             :return: (timeSeriesFrame, state)
         """
         if 'tracker' not in state:
-            state['tracker'] = Sort(max_age=5, min_hits=4, mode='euclidean')
+            state['tracker'] = Sort(max_age=5, min_hits=5, mode='euclidean', featureVectorSize=128)
 
         if 'people' not in state:
             state['people'] = {}
@@ -664,7 +744,13 @@ class ImageAnalyzer:
         trackerBoxSize = 500
 
         tracker = state['tracker']
-        detections = [[person['x']-trackerBoxSize/2, person['y']-trackerBoxSize/2, person['x']+trackerBoxSize/2, person['y']+trackerBoxSize/2, 1.0] for person in multiCameraFrame['people']]
+
+        featureVector = [[0] * 128] * len(multiCameraFrame['people'])
+        for personIndex, person in enumerate(multiCameraFrame['people']):
+            if person['averageFeatureVector'] is not None:
+                featureVector[personIndex] = person['averageFeatureVector']
+
+        detections = [[person['x']-trackerBoxSize/2, person['y']-trackerBoxSize/2, person['x']+trackerBoxSize/2, person['y']+trackerBoxSize/2] + featureVector[personIndex] for personIndex, person in enumerate(multiCameraFrame['people'])]
 
         tracked = tracker.update(np.array(detections))
 

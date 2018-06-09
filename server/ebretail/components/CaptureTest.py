@@ -262,6 +262,7 @@ class CaptureTest:
 
                 singleCameraFrames.append(singleCameraFrame)
 
+                cv2.imshow(camera['name'], debugImage)
                 cv2.waitKey(25)
 
                 debugImages.append(debugImage)
@@ -350,6 +351,8 @@ class CaptureTest:
 
             for person in timeSeriesFrame['people']:
                 person['color'] = (0, 255, 0)
+                person['x'] = person['x'] * self.testData['storeMap']['width']
+                person['y'] = person['y'] * self.testData['storeMap']['height']
             for person in multiCameraFrame['people']:
                 person['color'] = (0, 0, 255)
 

@@ -79,6 +79,12 @@
               },
               "bounding_box": {
                 "$ref": "Box.json#/definitions/Box"
+              },
+              "featureVector": {
+                "type": ["array", "null"],
+                "min": 128,
+                "max": 128,
+                "items": {"type": "number"}
               }
             }
           }
