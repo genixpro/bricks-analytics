@@ -401,7 +401,8 @@ class CaptureTest:
                     "width": self.testData['storeMap']['width'],
                     "height": self.testData['storeMap']['height']
                 },
-                "zones": []
+                "inventory": self.testData['inventory'],
+                "zones": self.testData['zones']
         }
         r = requests.post(self.storeUrl, json=data)
 
@@ -458,6 +459,7 @@ class CaptureTest:
 
         transaction['timestamp'] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
         r = requests.post(self.transactionUrl, json=transaction)
+        print("Sent transaction at " + transaction['timestamp'])
 
 
     def runSimulation(self):
@@ -481,3 +483,10 @@ class CaptureTest:
 
             timeStamp = timeStamp + datetime.timedelta(seconds=0.5)
 
+        # Now send up a few blank images to force the system to finish all of the tracks.
+        for i in range(10):
+            for cameraIndex in range(len(self.testData['cameras'])):
+                image = Image.new('RGB', (self.testData['cameras'][cameraIndex]['width'], self.testData['cameras'][cameraIndex]['height']), (0,0,0))
+                self.uploadImageToProcessor(numpy.array(image), timeStamp, cameraIndex)
+
+            timeStamp = timeStamp + datetime.timedelta(seconds=0.5)

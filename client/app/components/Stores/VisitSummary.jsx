@@ -34,6 +34,23 @@ class VisitSummary extends React.Component {
             }
         });
 
+        if (concentrationZone)
+        {
+            this.props.store.zones.forEach((zone) =>
+            {
+                if (zone.id === this.props.visitor.concentrationZoneId)
+                {
+                    // Merge all the data into one object
+                    concentrationZone = _.extend({}, concentrationZone, zone);
+                }
+            });
+        }
+
+        if (!concentrationZone.name)
+        {
+            concentrationZone.name = `Zone ${concentrationZone.zoneId}`;
+        }
+
         return concentrationZone;
     }
 
@@ -48,6 +65,23 @@ class VisitSummary extends React.Component {
                 lostSalesZone = zone;
             }
         });
+
+        if (lostSalesZone)
+        {
+            this.props.store.zones.forEach((zone) =>
+            {
+                if (zone.id === lostSalesZone.zoneId)
+                {
+                    // Merge all the data into one object
+                    lostSalesZone = _.extend({}, lostSalesZone, zone);
+                }
+            });
+        }
+
+        if (!lostSalesZone.name)
+        {
+            lostSalesZone.name = `Zone ${lostSalesZone.zoneId}`;
+        }
 
         return lostSalesZone;
     }
@@ -108,9 +142,17 @@ class VisitSummary extends React.Component {
                             <Col xs={4}>
                                 <Alert bsStyle="info">
                                     <strong>Zone Concentration</strong>
-                                    <p>{this.getConcentrationZoneData().name || this.getConcentrationZoneData().id}</p>
-                                    <p>{(this.getConcentrationZoneData().timeSpentSeconds / 60).toFixed(2)} min</p>
-                                    <p>{this.getConcentrationZoneData().name || this.getConcentrationZoneData().id}</p>
+                                    {
+                                        this.getConcentrationZoneData() ?
+                                            <div>
+                                                <p>{this.getConcentrationZoneData().name || this.getConcentrationZoneData().zoneId}</p>
+                                                <p><NumberFormat value={this.getConcentrationZoneData().totalSpend} displayType={'text'} thousandSeparator={true} prefix={'$'} decimalScale={2} /></p>
+                                                <p>{(this.getConcentrationZoneData().timeSpentSeconds / 60).toFixed(2)} min</p>
+                                            </div>
+                                            : <div>
+                                            <p>No concentration zone</p>
+                                            </div>
+                                    }
                                 </Alert>
                             </Col>
                             <Col xs={4}>
@@ -127,8 +169,9 @@ class VisitSummary extends React.Component {
                                     <strong>Lost Sales</strong>
                                     {(this.getWorstLostSalesZone()) ?
                                         <div>
-                                            <p>{this.getWorstLostSalesZone().name || this.getWorstLostSalesZone().id}</p>
-                                            <NumberFormat value={this.getWorstLostSalesZone().lostSales} displayType={'text'} thousandSeparator={true} prefix={'$'} decimalScale={2} />
+                                            <p>{this.getWorstLostSalesZone().name || this.getWorstLostSalesZone().zoneId}</p>
+                                            <p><NumberFormat value={this.getWorstLostSalesZone().lostSales} displayType={'text'} thousandSeparator={true} prefix={'$'} decimalScale={2} /></p>
+                                            <p>{(this.getWorstLostSalesZone().timeSpentSeconds / 60).toFixed(2)} min</p>
                                         </div>
                                         : <div>No lost sales.</div>
                                     }

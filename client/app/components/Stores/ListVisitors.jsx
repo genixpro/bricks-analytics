@@ -89,7 +89,7 @@ class ListVisitors extends React.Component {
                         </div>
                     </Col>
                     {this.state.visitor &&
-                        <VisitSummary visitor={this.state.visitor}/>
+                        <VisitSummary visitor={this.state.visitor} store={this.props.store}/>
                     }
                 </Row>
             </div>

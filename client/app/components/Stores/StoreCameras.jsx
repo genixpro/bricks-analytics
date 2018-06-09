@@ -11,7 +11,7 @@ class StoreCameras extends React.Component {
     constructor(props) {
         super(props);
 
-        this.camera = _.findWhere(this.props.store.cameras, {id: this.props.match.params.cameraId});
+        this.camera = _.findWhere(this.props.store.cameras, {cameraId: this.props.match.params.cameraId});
 
         this.state = {
             selectedCamera: this.props.match.params.cameraId,
@@ -288,87 +288,88 @@ class StoreCameras extends React.Component {
                                     </div>
                                 </div>
                             </Col>
-                            <Col md={3}>
-                                <div className="panel b">
-                                    <div className="panel-heading">
-                                        <h4 className="m0">Calibration</h4>
-                                    </div>
-                                    <div className="panel-body">
-                                        {this.state.cameraFrame ?
-                                            this.state.cameraFrame.calibrationObject ?
-                                                <div>
-                                                    <p>Success! The calibration checkboard is detected.</p>
-                                                    <button type="button" className="btn btn-default" onClick={this.calibrateCameraClicked.bind(this)}>Recalibrate</button>
-                                                </div>
-                                                :
-                                                <div>
-                                                    <p>The calibration checkboard is not detected. Please make sure the calibration checkboard is in view of this camera, and is aligned in the same direction as the camera.</p>
-                                                </div>
-                                            :
-                                            <div>Loading calibration data...</div>
-                                        }
-                                    </div>
-                                </div>
-                            </Col>
+                            {/*<Col md={3}>*/}
+                                {/*<div className="panel b">*/}
+                                    {/*<div className="panel-heading">*/}
+                                        {/*<h4 className="m0">Calibration</h4>*/}
+                                    {/*</div>*/}
+                                    {/*<div className="panel-body">*/}
+                                        {/*{this.state.cameraFrame ?*/}
+                                            {/*this.state.cameraFrame.calibrationObject ?*/}
+                                                {/*<div>*/}
+                                                    {/*<p>Success! The calibration checkboard is detected.</p>*/}
+                                                    {/*<button type="button" className="btn btn-default" onClick={this.calibrateCameraClicked.bind(this)}>Recalibrate</button>*/}
+                                                {/*</div>*/}
+                                                {/*:*/}
+                                                {/*<div>*/}
+                                                    {/*<p>The calibration checkboard is not detected. Please make sure the calibration checkboard is in view of this camera, and is aligned in the same direction as the camera.</p>*/}
+                                                {/*</div>*/}
+                                            {/*:*/}
+                                            {/*<div>Loading calibration data...</div>*/}
+                                        {/*}*/}
+                                    {/*</div>*/}
+                                {/*</div>*/}
+                            {/*</Col>*/}
                         </div>
-                        <div className="panel b" id="store-layout">
-                            <div className="panel-heading">
-                                <h4 className="m0">Location</h4>
-                            </div>
 
-                            <div className="panel-body">
-                                {this.props.showUpdateSuccess &&
-                                    <Alert bsStyle="success">
-                                        <p>Successfully updated the camera location.</p>
-                                    </Alert>
-                                }
+                        {/*<div className="panel b" id="store-layout">*/}
+                            {/*<div className="panel-heading">*/}
+                                {/*<h4 className="m0">Location</h4>*/}
+                            {/*</div>*/}
 
-                                {this.props.showUpdateFailure &&
-                                    <Alert bsStyle="danger">
-                                        <p>Failed to update the camera location.</p>
-                                    </Alert>
-                                }
+                            {/*<div className="panel-body">*/}
+                                {/*{this.props.showUpdateSuccess &&*/}
+                                    {/*<Alert bsStyle="success">*/}
+                                        {/*<p>Successfully updated the camera location.</p>*/}
+                                    {/*</Alert>*/}
+                                {/*}*/}
 
-                                <div className="store-image-container" id="store-image-container">
-                                    {this.props.isUpdatingStore &&
-                                        <div className="updatingOverlay">
-                                            <div className="spinnerWrapper">
-                                                <div className="sk-three-bounce">
-                                                    <div className="sk-child sk-bounce1"></div>
-                                                    <div className="sk-child sk-bounce2"></div>
-                                                    <div className="sk-child sk-bounce3"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
+                                {/*{this.props.showUpdateFailure &&*/}
+                                    {/*<Alert bsStyle="danger">*/}
+                                        {/*<p>Failed to update the camera location.</p>*/}
+                                    {/*</Alert>*/}
+                                {/*}*/}
 
-                                    {this.state.isSelectingCalibrationObjectLocation &&
-                                        <img id="calibration-object-location"
-                                             src='/img/checkerboard.png'
-                                             style={{
-                                                 "left": this.state.calibrationObjectX - checkerboardImageOffsetX,
-                                                 "top": this.state.calibrationObjectY - checkerboardImageOffsetY,
-                                                 "transform": 'rotate(' + this.state.cameraRotation + "rad)"}}
-                                             onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
-                                             onClick={this.calibrationObjectLocationChosen.bind(this)}
-                                        />
-                                    }
-                                    <img id="camera-location"
-                                         src='/img/video-camera-icon.png'
-                                         style={{
-                                             "left": this.state.cameraX - cameraImageOffsetX,
-                                             "top": this.state.cameraY - cameraImageOffsetY,
-                                             "transform": 'rotate(' + this.state.cameraRotation + "rad)"}}
-                                         onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
-                                         onClick={this.cameraLocationChosen.bind(this)}
-                                    />
-                                    <img id="store-image"
-                                         src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout"}
-                                         onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                                {/*<div className="store-image-container" id="store-image-container">*/}
+                                    {/*{this.props.isUpdatingStore &&*/}
+                                        {/*<div className="updatingOverlay">*/}
+                                            {/*<div className="spinnerWrapper">*/}
+                                                {/*<div className="sk-three-bounce">*/}
+                                                    {/*<div className="sk-child sk-bounce1"></div>*/}
+                                                    {/*<div className="sk-child sk-bounce2"></div>*/}
+                                                    {/*<div className="sk-child sk-bounce3"></div>*/}
+                                                {/*</div>*/}
+                                            {/*</div>*/}
+                                        {/*</div>*/}
+                                    {/*}*/}
+
+                                    {/*{this.state.isSelectingCalibrationObjectLocation &&*/}
+                                        {/*<img id="calibration-object-location"*/}
+                                             {/*src='/img/checkerboard.png'*/}
+                                             {/*style={{*/}
+                                                 {/*"left": this.state.calibrationObjectX - checkerboardImageOffsetX,*/}
+                                                 {/*"top": this.state.calibrationObjectY - checkerboardImageOffsetY,*/}
+                                                 {/*"transform": 'rotate(' + this.state.cameraRotation + "rad)"}}*/}
+                                             {/*onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}*/}
+                                             {/*onClick={this.calibrationObjectLocationChosen.bind(this)}*/}
+                                        {/*/>*/}
+                                    {/*}*/}
+                                    {/*<img id="camera-location"*/}
+                                         {/*src='/img/video-camera-icon.png'*/}
+                                         {/*style={{*/}
+                                             {/*"left": this.state.cameraX - cameraImageOffsetX,*/}
+                                             {/*"top": this.state.cameraY - cameraImageOffsetY,*/}
+                                             {/*"transform": 'rotate(' + this.state.cameraRotation + "rad)"}}*/}
+                                         {/*onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}*/}
+                                         {/*onClick={this.cameraLocationChosen.bind(this)}*/}
+                                    {/*/>*/}
+                                    {/*<img id="store-image"*/}
+                                         {/*src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout"}*/}
+                                         {/*onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}*/}
+                                    {/*/>*/}
+                                {/*</div>*/}
+                            {/*</div>*/}
+                        {/*</div>*/}
                     </Col>
                     }
                 </Row>

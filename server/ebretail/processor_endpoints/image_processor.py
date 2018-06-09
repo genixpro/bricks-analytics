@@ -106,7 +106,8 @@ def processImage(request):
 
                     imageRecordUrl = "http://localhost:1806/store/" + str(recordMetadata['storeId']) + "/cameras/" + str(recordMetadata['cameraId']) + "/image"
 
-                    image = Image.fromarray(debugImage, mode=None)
+                    imageToSend = cv2.cvtColor(debugImage, cv2.COLOR_BGR2RGB)
+                    image = Image.fromarray(imageToSend, mode=None)
                     b = io.BytesIO()
                     image.save(b, "JPEG", quality=80)
                     b.seek(0)

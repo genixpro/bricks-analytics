@@ -136,7 +136,7 @@ class VisitSummarizer:
                             break
                     # Now find the zone for this item and increase its spend
                     for zone in zones:
-                        if zone['id'] == storeItem['zone']:
+                        if str(zone['zoneId']) == str(storeItem['zone']):
                             zone['totalSpend'] += transactionItem['price'] * transactionItem['quantity']
                 if 'lostSales' in transaction:
                     for lostSaleItem in transaction['lostSales']:
@@ -151,7 +151,7 @@ class VisitSummarizer:
                         visitSummary['totalLostSales'] += storeItem['price'] * 1
                         # Now find the zone for this item and increase lost sales
                         for zone in zones:
-                            if zone['id'] == storeItem['zone']:
+                            if str(zone['zoneId']) == str(storeItem['zone']):
                                 zone['lostSales'] += storeItem['price'] * 1
 
         return visitSummary

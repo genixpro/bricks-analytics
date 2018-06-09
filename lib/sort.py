@@ -242,7 +242,7 @@ class Sort(object):
     i = len(self.trackers)
     for trk in reversed(self.trackers):
         d = trk.get_state()[0]
-        if((trk.hits >= self.min_hits or self.frame_count <= self.min_hits)): # ELECTRIC BRAIN MODIFIED THIS LINE
+        if((trk.hits >= self.min_hits)): # ELECTRIC BRAIN MODIFIED THIS LINE
           ret.append(np.concatenate((d,[trk.id+1, trk.detIndex])).reshape(1,-1)) # +1 as MOT benchmark requires positive
         i -= 1
         #remove dead tracklet

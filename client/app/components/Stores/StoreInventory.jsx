@@ -24,12 +24,12 @@ const InventoryItemSchema = {
 class StoreInventory extends React.Component {
     constructor(props) {
         super(props);
-
-        this.state = {};
+        
+        this.state = this.props.editorState ? (this.props.editorState.inventoryState || {}) : {};
     }
 
 
-    onNewItemSubmit(submission)
+    onItemSubmit(submission)
     {
         const newInventoryItem = submission.formData;
 
@@ -39,17 +39,51 @@ class StoreInventory extends React.Component {
             store.inventory = [];
         }
 
-        // Make sure there isn't already an entry for this barcode
-        if (_.findWhere(store.inventory, {barcode: newInventoryItem.barcode}))
+        if (this.state.isEditing)
         {
-            alert("Item with this barcode already exists.");
+            const item = _.findWhere(store.inventory, {barcode: newInventoryItem.barcode});
+            Object.keys(newInventoryItem).forEach((key) => {item[key] = newInventoryItem[key];});
+            this.props.updateStore(store);
+            this.setState({isEditing: false});
         }
         else
         {
-            store.inventory.push(newInventoryItem);
-            this.props.updateStore(store);
+            // Make sure there isn't already an entry for this barcode
+            if (_.findWhere(store.inventory, {barcode: newInventoryItem.barcode}))
+            {
+                alert("Item with this barcode already exists.");
+            }
+            else
+            {
+                store.inventory.push(newInventoryItem);
+                this.props.updateStore(store);
+            }
         }
     }
+    
+    setState(newState)
+    {
+        this.props.updateEditorState({
+            inventoryState: newState
+        });
+    }
+
+    onEditItemClick(item, event)
+    {
+        this.setState({
+            editItem: item,
+            isEditing: true
+        });
+    }
+
+    onDeleteItemClick(deleteItem, event)
+    {
+        const store = _.clone(this.props.store);
+        store.inventory = _.filter(store.inventory, (item) =>(item.barcode !== deleteItem.barcode));
+        this.props.updateStore(store);
+
+    }
+
 
     render() {
         const storeInventorySchema = _.clone(InventoryItemSchema);
@@ -68,6 +102,7 @@ class StoreInventory extends React.Component {
                                     <th>Price</th>
                                     <th>Zone</th>
                                     <th>LS Code</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -81,6 +116,10 @@ class StoreInventory extends React.Component {
                                             <td>{item.price}</td>
                                             <td>{item.zone}</td>
                                             <td>{item.lsCode}</td>
+                                            <td>
+                                                <i className={"fa fa-edit"} onClick={this.onEditItemClick.bind(this, item)} />
+                                                <i className={"fa fa-times"} onClick={this.onDeleteItemClick.bind(this, item)} />
+                                            </td>
                                         </tr>
                                     })
                                     : null
@@ -89,9 +128,15 @@ class StoreInventory extends React.Component {
                         </Table>
                     </Col>
                     <Col md={4}>
-                        <h1>New Item</h1>
+                        {
+                            this.state.isEditing
+                            ? <h1>Editing Item</h1>
+                            : <h1>New Item</h1>
+                        }
                         <Form schema={storeInventorySchema}
-                              onSubmit={this.onNewItemSubmit.bind(this)} />
+                              onSubmit={this.onItemSubmit.bind(this)}
+                              formData={this.state.editItem}
+                        />
                     </Col>
                 </Row>
             </div>

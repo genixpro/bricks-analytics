@@ -57,21 +57,17 @@ class ViewStore extends React.Component {
         }
         else if (tab === "2")
         {
-            this.props.history.push("/store/" + this.props.match.params.storeId + "/image_processors");
+            this.props.history.push("/store/" + this.props.match.params.storeId + "/cameras");
         }
         else if (tab === "3")
         {
-            this.props.history.push("/store/" + this.props.match.params.storeId + "/cameras");
+            this.props.history.push("/store/" + this.props.match.params.storeId + "/visitors");
         }
         else if (tab === "4")
         {
-            this.props.history.push("/store/" + this.props.match.params.storeId + "/visitors");
-        }
-        else if (tab === "5")
-        {
             this.props.history.push("/store/" + this.props.match.params.storeId + "/inventory");
         }
-        else if (tab === "6")
+        else if (tab === "5")
         {
             this.props.history.push("/minipos/" + this.props.match.params.storeId);
         }
@@ -133,19 +129,16 @@ class ViewStore extends React.Component {
                             <NavItem eventKey="1" href={"/store/" + this.props.match.params.storeId + "/details"}>
                                 Details
                             </NavItem>
-                            <NavItem eventKey="2" href={"/store/" + this.props.match.params.storeId + "/image_processors"}>
-                                Image Processors
-                            </NavItem>
-                            <NavItem eventKey="3" href={"/store/" + this.props.match.params.storeId + "/cameras"}>
+                            <NavItem eventKey="2" href={"/store/" + this.props.match.params.storeId + "/cameras"}>
                                 Cameras
                             </NavItem>
-                            <NavItem eventKey="4" href={"/store/" + this.props.match.params.storeId + "/visitors"}>
+                            <NavItem eventKey="3" href={"/store/" + this.props.match.params.storeId + "/visitors"}>
                                 Visitors
                             </NavItem>
-                            <NavItem eventKey="5" href={"/store/" + this.props.match.params.storeId + "/inventory"}>
+                            <NavItem eventKey="4" href={"/store/" + this.props.match.params.storeId + "/inventory"}>
                                 Inventory
                             </NavItem>
-                            <NavItem eventKey="6" href={"/minipos/" + this.props.match.params.storeId}>
+                            <NavItem eventKey="5" href={"/minipos/" + this.props.match.params.storeId}>
                                 Mini POS
                             </NavItem>
                         </Nav>
