@@ -25,5 +25,5 @@ if __name__ == '__main__':
     setup_logging(config_uri)
     settings = get_appsettings(config_uri)
 
-    waitress.serve(main_api(None, **settings), host='localhost', port=1806)
+    waitress.serve(main_api(None, **settings), host='*', port=1806)
 

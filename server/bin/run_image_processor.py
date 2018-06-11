@@ -24,4 +24,4 @@ if __name__ == '__main__':
     setup_logging(config_uri)
     settings = get_appsettings(config_uri)
 
-    waitress.serve(image_processor_microservice(None, **settings), host='localhost', port=1845)
+    waitress.serve(image_processor_microservice(None, **settings), host='*', port=1845)
