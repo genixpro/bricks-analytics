@@ -736,7 +736,7 @@ class ImageAnalyzer:
             :return: (timeSeriesFrame, state)
         """
         if 'tracker' not in state:
-            state['tracker'] = Sort(max_age=5, min_hits=5, mode='euclidean', featureVectorSize=128)
+            state['tracker'] = Sort(max_age=5, min_hits=5, mode='euclidean', featureVectorSize=128, new_track_min_dist=300)
 
         if 'people' not in state:
             state['people'] = {}

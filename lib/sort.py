@@ -205,7 +205,7 @@ def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0
 
 
 class Sort(object):
-  def __init__(self,max_age=1,min_hits=3, featureVectorSize = 0, mode='iou'):
+  def __init__(self,max_age=1,min_hits=3, featureVectorSize = 0, mode='iou', new_track_min_dist=0):
     """
     Sets key parameters for SORT
     """
@@ -215,6 +215,7 @@ class Sort(object):
     self.frame_count = 0
     self.mode = mode
     self.featureVectorSize = featureVectorSize
+    self.new_track_min_dist = new_track_min_dist
 
   def update(self,dets):
     """
@@ -261,10 +262,22 @@ class Sort(object):
 
     #create and initialise new trackers for unmatched detections
     for i in unmatched_dets:
-        trk = KalmanBoxTracker(dets[i,:])
-        trk.detIndex = i
-        trk.featureVector = dets[i,:][4:]
-        self.trackers.append(trk)
+        det_bbox = dets[i,:][4:]
+
+        allow = True
+        if self.new_track_min_dist > 0:
+          center = [det_bbox[0]/2 + det_bbox[2]/2, det_bbox[1]/2 + det_bbox[3]/2]
+          for t,trk in enumerate(self.trackers):
+            trk_bbox = trk.get_state()[0]
+            trk_center = [trk_bbox[0]/2 + trk_bbox[2]/2, trk_bbox[1]/2 + trk_bbox[3]/2]
+            if scipy.spatial.distance.euclidean(center, trk_center) < self.new_track_min_dist:
+                allow = False
+
+        if allow:
+          trk = KalmanBoxTracker(dets[i,:])
+          trk.detIndex = i
+          trk.featureVector = dets[i,:][4:]
+          self.trackers.append(trk)
 
     i = len(self.trackers)
     for trk in reversed(self.trackers):
