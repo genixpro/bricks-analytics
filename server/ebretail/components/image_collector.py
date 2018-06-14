@@ -11,6 +11,7 @@ import threading
 import traceback
 import imageio
 import numpy
+import urllib
 import os
 import subprocess
 
@@ -84,7 +85,7 @@ class ImageCollector:
     def cameraId(self, i):
         return self.metadata['collectorId'] + "-camera-" + str(i)
 
-    def openCameras(self):
+    def openLocalCameras(self):
         # Find a list of all video devices
         videoDevices = [device for device in os.listdir('/dev/') if 'video' in device]
         videoDeviceIndexes = [int(device[len('video'):]) for device in videoDevices]
@@ -117,6 +118,11 @@ class ImageCollector:
                 print(traceback.format_exc())
         self.cameras = cameras
 
+    def openRemoteMJPEGCamera(self, url):
+        camera = cv2.VideoCapture(url)
+        self.cameras = [camera]
+
+
     def register(self):
         """ This function registers this image collector with the main server. """
         data = {
@@ -127,14 +133,25 @@ class ImageCollector:
         r = requests.post(self.registrationUrl, json=data)
 
 
-    def main(self):
-        self.openCameras()
+    def runLocalCapture(self):
+        self.openLocalCameras()
 
         # Make sure we have at least one camera
         if len(self.cameras) == 0:
             raise Exception("No cameras available for capture besides first (laptop cam)")
 
         self.register()
+        self.captureLoop()
+
+    def runMJPEGCapture(self, url):
+        # self.openRemoteMJPEGCamera(url)
+
+        self.cameras = [url]
+
+        self.register()
+        self.captureLoop()
+
+    def captureLoop(self):
         self.amqpThread.start()
 
         lastFrameTime = datetime.fromtimestamp(time.time() - (time.time() % 0.5))
@@ -183,22 +200,42 @@ class ImageCollector:
             print("Failed to upload " + timeStamp.strftime("%Y-%m-%dT%H:%M:%S.%f") + ": " + str(e))
             pass
 
+    def captureMJPEG(self, url):
+        r = requests.get(url, stream=True)
+        if (r.status_code == 200):
+            byteArray = bytes()
+            for chunk in r.iter_content(chunk_size=1024):
+                byteArray += chunk
+                a = byteArray.find(b'\xff\xd8')
+                b = byteArray.find(b'\xff\xd9')
+                if a != -1 and b != -1:
+                    jpg = byteArray[a:b + 2]
+                    byteArray = byteArray[b + 2:]
+                    i = cv2.imdecode(numpy.fromstring(jpg, dtype=numpy.uint8), cv2.IMREAD_COLOR)
+                    return i
+
+
     def captureImages(self):
         images = []
 
         for index, camera in enumerate(self.cameras):
-            success = camera.grab()
+            if type(camera) is not str:
+                success = camera.grab()
 
         for index, camera in enumerate(self.cameras):
-            cameraId = self.cameraId(index)
-            image = camera.retrieve()[1]
+            if type(camera) is not str:
+                cameraId = self.cameraId(index)
+                image = camera.retrieve()[1]
+            else:
+                image = self.captureMJPEG(camera)
 
             images.append(image)
 
         return images
 
     def captureDatasetMain(self):
-        self.openCameras()
+        self.openLocalCameras()
+
         # self.register()
         self.amqpThread.start()
 
@@ -230,7 +267,7 @@ class ImageCollector:
                 raise e
 
     def captureSingleDatasetImageMain(self):
-        self.openCameras()
+        self.openLocalCameras()
         # self.register()
         self.amqpThread.start()
 

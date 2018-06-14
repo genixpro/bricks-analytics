@@ -44,7 +44,7 @@ class StoreDetails extends React.Component {
                         "width": this.width,
                         "height": this.height
                     };
-                    
+
                     self.props.updateStore(store);
 
                     self.setState({showProgress: false, storeLayoutCacheBreaker: Date.now().toString()});
