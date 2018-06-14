@@ -9,7 +9,7 @@ class Dashboard extends React.Component {
             <ContentWrapper>
                 <div className="content-heading">
                     Dashboard
-                    <small>Welcome to EB Retail</small>
+                    <small>Welcome to Bricks Analytics</small>
                 </div>
                 <Row>
                     <Col xs={12} className="text-center">

@@ -5,7 +5,7 @@ class Footer extends React.Component {
     render() {
         return (
             <footer>
-                <span>&copy; 2018 Electric Brain Software Corporation</span>
+                <span>&copy; 2018 Bricks Analytics Inc</span>
             </footer>
         );
     }

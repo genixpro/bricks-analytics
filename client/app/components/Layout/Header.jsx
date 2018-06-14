@@ -66,92 +66,92 @@ class Header extends React.Component {
                                 </a>
                             </li>
                             { /* START User avatar toggle */ }
-                            <li>
+                            { /* <li> */ }
                                 { /* Button used to collapse the left sidebar. Only visible on tablet and desktops */ }
-                                <a id="user-block-toggle" href="#" onClick={ this.toggleUserblock }>
-                                    <em className="icon-user"></em>
-                                </a>
-                            </li>
+                                { /* <a id="user-block-toggle" href="#" onClick={ this.toggleUserblock }> */ }
+                                    { /* <em className="icon-user"></em> */ }
+                                { /* </a> */ }
+                            { /* </li> */ }
                             { /* END User avatar toggle */ }
                         </ul>
                         { /* END Left navbar */ }
                         { /* START Right Navbar */ }
                         <ul className="nav navbar-nav navbar-right">
                             { /* Search icon */ }
-                            <li>
-                                <a href="#" data-search-open="">
-                                    <em className="icon-magnifier"></em>
-                                </a>
-                            </li>
+                            {/*<li>*/}
+                                {/*<a href="#" data-search-open="">*/}
+                                    {/*<em className="icon-magnifier"></em>*/}
+                                {/*</a>*/}
+                            {/*</li>*/}
                             { /* START Alert menu */ }
-                            <NavDropdown noCaret eventKey={ 3 } title={ ddAlertTitle } className="dropdown-list" id="basic-nav-dropdown" >
-                              <CustomListGroup>
-                                <ListGroupItem href="javascript:void(0)">
-                                     <div className="media-box">
-                                        <div className="pull-left">
-                                           <em className="fa fa-twitter fa-2x text-info"></em>
-                                        </div>
-                                        <div className="media-box-body clearfix">
-                                           <p className="m0">New followers</p>
-                                           <p className="m0 text-muted">
-                                              <small>1 new follower</small>
-                                           </p>
-                                        </div>
-                                     </div>
-                                </ListGroupItem>
-                                <ListGroupItem href="javascript:void(0)">
-                                     <div className="media-box">
-                                        <div className="pull-left">
-                                           <em className="fa fa-envelope fa-2x text-warning"></em>
-                                        </div>
-                                        <div className="media-box-body clearfix">
-                                           <p className="m0">New e-mails</p>
-                                           <p className="m0 text-muted">
-                                              <small>You have 10 new emails</small>
-                                           </p>
-                                        </div>
-                                     </div>
-                                </ListGroupItem>
-                                <ListGroupItem href="javascript:void(0)">
-                                     <div className="media-box">
-                                        <div className="pull-left">
-                                           <em className="fa fa-tasks fa-2x text-success"></em>
-                                        </div>
-                                        <div className="media-box-body clearfix">
-                                           <p className="m0">Pending Tasks</p>
-                                           <p className="m0 text-muted">
-                                              <small>11 pending task</small>
-                                           </p>
-                                        </div>
-                                     </div>
-                                </ListGroupItem>
-                                <ListGroupItem href="javascript:void(0)">
-                                     <small>More notifications</small>
-                                     <span className="label label-danger pull-right">14</span>
-                                </ListGroupItem>
+                            {/*<NavDropdown noCaret eventKey={ 3 } title={ ddAlertTitle } className="dropdown-list" id="basic-nav-dropdown" >*/}
+                              {/*<CustomListGroup>*/}
+                                {/*<ListGroupItem href="javascript:void(0)">*/}
+                                     {/*<div className="media-box">*/}
+                                        {/*<div className="pull-left">*/}
+                                           {/*<em className="fa fa-twitter fa-2x text-info"></em>*/}
+                                        {/*</div>*/}
+                                        {/*<div className="media-box-body clearfix">*/}
+                                           {/*<p className="m0">New followers</p>*/}
+                                           {/*<p className="m0 text-muted">*/}
+                                              {/*<small>1 new follower</small>*/}
+                                           {/*</p>*/}
+                                        {/*</div>*/}
+                                     {/*</div>*/}
+                                {/*</ListGroupItem>*/}
+                                {/*<ListGroupItem href="javascript:void(0)">*/}
+                                     {/*<div className="media-box">*/}
+                                        {/*<div className="pull-left">*/}
+                                           {/*<em className="fa fa-envelope fa-2x text-warning"></em>*/}
+                                        {/*</div>*/}
+                                        {/*<div className="media-box-body clearfix">*/}
+                                           {/*<p className="m0">New e-mails</p>*/}
+                                           {/*<p className="m0 text-muted">*/}
+                                              {/*<small>You have 10 new emails</small>*/}
+                                           {/*</p>*/}
+                                        {/*</div>*/}
+                                     {/*</div>*/}
+                                {/*</ListGroupItem>*/}
+                                {/*<ListGroupItem href="javascript:void(0)">*/}
+                                     {/*<div className="media-box">*/}
+                                        {/*<div className="pull-left">*/}
+                                           {/*<em className="fa fa-tasks fa-2x text-success"></em>*/}
+                                        {/*</div>*/}
+                                        {/*<div className="media-box-body clearfix">*/}
+                                           {/*<p className="m0">Pending Tasks</p>*/}
+                                           {/*<p className="m0 text-muted">*/}
+                                              {/*<small>11 pending task</small>*/}
+                                           {/*</p>*/}
+                                        {/*</div>*/}
+                                     {/*</div>*/}
+                                {/*</ListGroupItem>*/}
+                                {/*<ListGroupItem href="javascript:void(0)">*/}
+                                     {/*<small>More notifications</small>*/}
+                                     {/*<span className="label label-danger pull-right">14</span>*/}
+                                {/*</ListGroupItem>*/}
 
-                              </CustomListGroup>
-                            </NavDropdown>
+                              {/*</CustomListGroup>*/}
+                            {/*</NavDropdown>*/}
                             { /* END Alert menu */ }
                             { /* START Offsidebar button */ }
-                            <li>
-                                <a href="#" data-toggle-state="offsidebar-open" data-no-persist="true">
-                                    <em className="icon-notebook"></em>
-                                </a>
-                            </li>
+                            {/*<li>*/}
+                                {/*<a href="#" data-toggle-state="offsidebar-open" data-no-persist="true">*/}
+                                    {/*<em className="icon-notebook"></em>*/}
+                                {/*</a>*/}
+                            {/*</li>*/}
                             { /* END Offsidebar menu */ }
                         </ul>
                         { /* END Right Navbar */ }
                     </div>
                     { /* END Nav wrapper */ }
                     { /* START Search form */ }
-                    <form role="search" action="search.html" className="navbar-form">
-                        <div className="form-group has-feedback">
-                            <input type="text" placeholder="Type and hit enter ..." className="form-control" />
-                            <div data-search-dismiss="" className="fa fa-times form-control-feedback"></div>
-                        </div>
-                        <button type="submit" className="hidden btn btn-default">Submit</button>
-                    </form>
+                    {/*<form role="search" action="search.html" className="navbar-form">*/}
+                        {/*<div className="form-group has-feedback">*/}
+                            {/*<input type="text" placeholder="Type and hit enter ..." className="form-control" />*/}
+                            {/*<div data-search-dismiss="" className="fa fa-times form-control-feedback"></div>*/}
+                        {/*</div>*/}
+                        {/*<button type="submit" className="hidden btn btn-default">Submit</button>*/}
+                    {/*</form>*/}
                     { /* END Search form */ }
                 </nav>
                 { /* END Top Navbar */ }
