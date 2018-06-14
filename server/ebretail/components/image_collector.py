@@ -1,7 +1,7 @@
 import time
 from datetime import datetime, timedelta
 import json
-
+from pprint import pprint
 import concurrent.futures
 import cv2
 import requests
@@ -11,6 +11,8 @@ import threading
 import traceback
 import imageio
 import numpy
+import os
+import subprocess
 
 import pika
 
@@ -30,13 +32,15 @@ class ImageCollector:
         self.amqpUri = "localhost"
         self.metadata = {
             "collectorId": "collector-0",
-            "storeId": 4
+            "storeId": 1
         }
 
         self.recordNextImage = {}
 
         self.collectionFrequency = 500
         self.uploadTimeout = 5
+
+        self.bannedCameras = ['USB2.0 HD UVC WebCam: USB2.0 HD'] # This represents my laptop camera
 
         self.amqpThread = threading.Thread(target=lambda: self.amqpConnectionThread())
 
@@ -82,20 +86,34 @@ class ImageCollector:
         return self.metadata['collectorId'] + "-camera-" + str(i)
 
     def openCameras(self):
-        # Try to capture all devices except first, which is
-        # laptops onboard camera
+        # Find a list of all video devices
+        videoDevices = [device for device in os.listdir('/dev/') if 'video' in device]
+        videoDeviceIndexes = [int(device[len('video'):]) for device in videoDevices]
 
-        index = 1
+        camerasToUse = []
+        for device in videoDeviceIndexes:
+            info = subprocess.run(['v4l2-ctl', '--all', '-d', str(device)], stdout=subprocess.PIPE, encoding='utf8').stdout
+
+            useCamera = True
+
+            # Make sure this is a valid camera stream.
+            # Some video streams are actually invalid and can't be opened.
+            if 'Format Video Capture:' not in info:
+                useCamera = False
+
+            for bannedCameraName in self.bannedCameras:
+                if bannedCameraName in info:
+                    useCamera = False
+
+            if useCamera:
+                camerasToUse.append(device)
+
         cameras = []
-        while True:
+        for device in camerasToUse:
             try:
-                camera = cv2.VideoCapture(index)
-                # camera.set(cv2.CAP_PROP_FPS, 4)
+                camera = cv2.VideoCapture(device)
                 if camera is not None and camera.isOpened():
                     cameras.append(camera)
-                    index += 1
-                else:
-                    break
             except Exception as e:
                 print(traceback.format_exc())
         self.cameras = cameras
@@ -105,7 +123,7 @@ class ImageCollector:
         data = {
             "store": self.metadata['storeId'],
             "collectorId": self.metadata['collectorId'],
-            "cameras": [{"id": self.cameraId(i)} for i in range(len(self.cameras))]
+            "cameras": [{"cameraId": self.cameraId(i)} for i in range(len(self.cameras))]
         }
         r = requests.post(self.registrationUrl, json=data)
 
