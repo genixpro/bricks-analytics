@@ -37,7 +37,19 @@ class StoreDetails extends React.Component {
                 },
             }).then((response) =>
             {
-                self.setState({showProgress: false, storeLayoutCacheBreaker: Date.now().toString()});
+                const img = new Image();
+                img.onload = function () {
+                    const store = self.props.store;
+                    store.storeMap = {
+                        "width": this.width,
+                        "height": this.height
+                    };
+                    
+                    self.props.updateStore(store);
+
+                    self.setState({showProgress: false, storeLayoutCacheBreaker: Date.now().toString()});
+                };
+                img.src = window.URL.createObjectURL(fileList[0]);
             });
         }
 

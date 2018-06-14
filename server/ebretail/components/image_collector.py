@@ -74,7 +74,6 @@ class ImageCollector:
 
     def handleCameraQueueMessage(self, ch, method, properties, body):
         message = json.loads(body)
-        print(message)
         if message['type'] == 'record-image':
             self.recordNextImage[message['cameraId']] = True
 
@@ -130,12 +129,13 @@ class ImageCollector:
 
     def main(self):
         self.openCameras()
-        self.register()
-        self.amqpThread.start()
 
         # Make sure we have at least one camera
         if len(self.cameras) == 0:
             raise Exception("No cameras available for capture besides first (laptop cam)")
+
+        self.register()
+        self.amqpThread.start()
 
         lastFrameTime = datetime.fromtimestamp(time.time() - (time.time() % 0.5))
 

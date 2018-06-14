@@ -30,6 +30,7 @@ class MultiImageAnalyzer:
         self.scheduledFrames = {}
         self.frameExecutor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
 
+        self.keepScheduleThreadAlive = True
         self.schedulerThread.start()
 
         self.imageAnalyzer = ImageAnalyzer()
@@ -55,9 +56,11 @@ class MultiImageAnalyzer:
             # The ChangeStream encountered an unrecoverable error or the
             # resume attempt failed to recreate the cursor.
             print(e)
+        finally:
+            self.keepScheduleThreadAlive = False
 
     def runSchedulerThread(self):
-        while True:
+        while self.keepScheduleThreadAlive:
             self.scheduler.run()
             time.sleep(0.1)
 
