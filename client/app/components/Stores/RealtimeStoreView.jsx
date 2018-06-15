@@ -4,6 +4,7 @@ import {withRouter} from "react-router-dom";
 import { Grid, Row, Col, Panel, Button, FormControl, FormGroup, InputGroup, DropdownButton, MenuItem, Tab, Tabs, Nav, NavItem } from 'react-bootstrap';
 import ZoneEditor from './ZoneEditor';
 import _ from 'underscore';
+import Transition from 'react-transition-group/Transition';
 
 
 class RealtimeStoreView extends React.Component {
@@ -20,7 +21,32 @@ class RealtimeStoreView extends React.Component {
         {
             const body = JSON.parse(message.body);
 
-            this.setState({frame: body});
+            const newState = {
+                frame: body,
+                fadingPeople: []
+            };
+
+            if (this.state.frame)
+            {
+                this.state.frame.people.forEach((person) =>
+                {
+                    let found = false;
+                    newState.frame.people.forEach((person2) =>
+                    {
+                        if (person.visitorId === person2.visitorId)
+                        {
+                            found = true;
+                        }
+                    });
+
+                    if (!found)
+                    {
+                        newState.fadingPeople.push(person);
+                    }
+                });
+            }
+
+            this.setState(newState);
         }, headers);
     }
 
@@ -38,6 +64,48 @@ class RealtimeStoreView extends React.Component {
 
 
     render() {
+        const transitionDuration = 750;
+
+        const personEnterTransitionStyles = {
+            entering: { opacity: 0 },
+            entered:  { opacity: 1 },
+            exiting: { opacity: 1 },
+            exited:  { opacity: 0 }
+        };
+
+        const personExitTransitionStyles = {
+            entering: { opacity: 1 },
+            entered:  { opacity: 0 }
+        };
+
+        const drawPerson = (person, fading) => {
+            return <Transition
+                in={true}
+                appear={true}
+                key={person.visitorId}
+                timeout={transitionDuration}>
+                {(state) => (
+                    <div
+                        className={"person-location-box " + state}
+                        style={_.extend({
+                            "left": "calc(" + (person["x"] * 100) + "% - 30px)",
+                            "top": "calc(" + (person["y"] * 100) + "% - 30px)",
+                            "opacity": 0,
+                            "transition": `left ${transitionDuration}ms ease-in-out, top ${transitionDuration}ms ease-in-out, opacity ${transitionDuration}ms ease-in-out`
+                        }, fading ? personExitTransitionStyles[state] : personEnterTransitionStyles[state])}>
+                        <div className={"person-image-wrapper"}>
+                            <img className="person-image"
+                                 src='/img/person.png'
+                            />
+                        </div>
+                        <div className={"visitor-id-block"}>
+                            <span>{person.visitorId}</span>
+                        </div>
+                    </div>
+                )}
+            </Transition>;
+        };
+
         return (
             <div className={"realtime-store-view"}>
                 <br/>
@@ -47,26 +115,8 @@ class RealtimeStoreView extends React.Component {
                             <h2>Realtime Store View</h2>
                             <div className="storeMap">
                                 <img className='store-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout"} />
-                                {this.state.frame &&
-                                    this.state.frame.people.map((person) =>
-                                    <div
-                                        key={person.visitorId}
-                                        className={"person-location-box"}
-                                         style={{
-                                             "left": "calc(" + (person["x"] * 100) + "% - 30px)",
-                                             "top": "calc(" + (person["y"] * 100) + "% - 30px)"
-                                         }}>
-                                        <div className={"person-image-wrapper"}>
-                                            <img className="person-image"
-                                                 src='/img/person.png'
-                                            />
-                                        </div>
-                                        <div className={"visitor-id-block"}>
-                                            <span>Visitor {person.visitorId}</span>
-                                        </div>
-                                    </div>
-                                )
-                                }
+                                {this.state.frame && this.state.frame.people.map((person) => drawPerson(person, false))}
+                                {this.state.fadingPeople && this.state.fadingPeople.map((person) => drawPerson(person, true))}
                             </div>
                         </Col>
                     </Row>
