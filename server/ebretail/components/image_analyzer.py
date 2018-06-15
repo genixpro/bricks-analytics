@@ -99,7 +99,7 @@ class ImageAnalyzer:
         trackingCheckpointFilename = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", "lib", "deep-sort", "mars-small128.pb")
         trackingInputName = 'images'
         trackingOutputName = 'features'
-        
+
         config = tf.ConfigProto(
             device_count={'GPU': 0}
         )
@@ -148,7 +148,7 @@ class ImageAnalyzer:
         image = image[sy:ey, sx:ex]
         image = cv2.resize(image, tuple(crop_shape[::-1]))
         return image
-    
+
     def processSingleCameraImage(self, image, metadata, state, debugImage):
         """
             This method is used to process a single image from a single camera. It produces a SingleCameraFrame object.
@@ -408,6 +408,7 @@ class ImageAnalyzer:
                     mergePerson1['averageFeatureVector'] = np.array(mergePerson2['averageFeatureVector'])
 
                 del multiCameraFrame['people'][mergePersonIndex2]
+                didMerge = True
 
         # Now divide all the average feature vectors by the number of detections.
         for person in multiCameraFrame['people']:
@@ -517,12 +518,12 @@ class ImageAnalyzer:
                 # Compute this persons outer bounding box
                 box = self.boundingBoxForPerson(detectedPerson)
 
-                detection = np.array([box['left'], box['top'], box['right'], box['bottom']] + [0] * self.trackingFeatureDim)  # the last entry is the score, which is the number of keypoints detected
+                detection = np.array([box['left'], box['top'], box['right'], box['bottom'], 1.0] + [0] * self.trackingFeatureDim)  # the middle entry is the score, which doesn't matter for this trackker. Feature vector after that.
 
                 croppedPerson = self.extractTrackingCrop(image, detection[:4], self.trackingImageShape[:-1])
                 if croppedPerson is not None:
                     featureVector = self.trackingSession.run(self.trackingOutputVar, feed_dict={self.trackingInputVar: [croppedPerson]})
-                    detection[4:] = featureVector[0]
+                    detection[5:] = featureVector[0]
                     featureVectors.append(featureVector[0].tolist())
                 else:
                     featureVectors.append(None)
@@ -547,35 +548,12 @@ class ImageAnalyzer:
 
             # Now we have a bunch of tracked boxes. Find which person goes with which tracked box
             for boxIndex, box in enumerate(trackedBoxes):
-                bestMatch = None
-                bestDistance = 0
-                for person in peoplePoints:
-                    distances = []
-                    for point in person:
-                        if point[0] == 0 and point[1] == 0:
-                            pass
-                        elif point[0] >= box[0] and point[0] <= box[2] and point[1] >= box[1] and point[1] <= box[3]:
-                            # Point is in the box, distance is 0
-                            distances.append(0)
-                        else:
-                            if point[0] < box[0] or point[0] > box[2]:
-                                distanceX = min(abs(point[0] - box[0]), abs(point[0] - box[2]))
-                                distances.append(distanceX * distanceX)
-
-                            if point[1] < box[1] or point[1] > box[3]:
-                                distanceY = min(abs(point[1] - box[1]), abs(point[1] - box[3]))
-                                distances.append(distanceY * distanceY)
-
-                    distance = np.mean(np.array(distances))
-
-                    if bestMatch is None or (distance < bestDistance and distance < self.trackerMaxAverageDist):
-                        bestMatch = person
-                        bestDistance = distance
-                if bestMatch is not None:
+                if int(box[5]) >= 0:
+                    person = peoplePoints[int(box[5])]
                     personData = {
                         'detectionId': str(int(box[4])),
-                        'keypoints': self.getKeypointsObject(bestMatch),
-                        "bounding_box": self.boundingBoxForPerson(bestMatch),
+                        'keypoints': self.getKeypointsObject(person),
+                        "bounding_box": self.boundingBoxForPerson(person),
                         "featureVector": trackedVectors[boxIndex]
                     }
                     newPeople.append(personData)
@@ -736,7 +714,7 @@ class ImageAnalyzer:
             :return: (timeSeriesFrame, state)
         """
         if 'tracker' not in state:
-            state['tracker'] = Sort(max_age=5, min_hits=5, mode='euclidean', featureVectorSize=128, new_track_min_dist=300)
+            state['tracker'] = Sort(max_age=5, min_hits=3, mode='euclidean', featureVectorSize=128, new_track_min_dist=300)
 
         if 'people' not in state:
             state['people'] = {}
@@ -750,7 +728,30 @@ class ImageAnalyzer:
             if person['averageFeatureVector'] is not None:
                 featureVector[personIndex] = person['averageFeatureVector']
 
-        detections = [[person['x']-trackerBoxSize/2, person['y']-trackerBoxSize/2, person['x']+trackerBoxSize/2, person['y']+trackerBoxSize/2] + featureVector[personIndex] for personIndex, person in enumerate(multiCameraFrame['people'])]
+        detections = []
+        for personIndex, person in enumerate(multiCameraFrame['people']):
+            allowTrackCreationDeletion = True
+
+            # Determine what zone this detection is located within
+            for zone in storeConfiguration['zones']:
+                relX = person['x'] / storeConfiguration['storeMap']['width']
+                relY = person['y'] / storeConfiguration['storeMap']['height']
+                if relX >= zone['left'] and relX <= zone['right'] and relY >= zone['top'] and relY <= zone['bottom']:
+                    # This is the correct zone.
+                    # If this is not an entry zone,
+                    # we don't allow the track to appear or disappear
+                    if zone['zoneType'] != 'entry':
+                        allowTrackCreationDeletion = False
+                    break
+
+            detection = [
+                            person['x'] - trackerBoxSize / 2,
+                            person['y'] - trackerBoxSize / 2,
+                            person['x'] + trackerBoxSize / 2,
+                            person['y'] + trackerBoxSize / 2,
+                            float(allowTrackCreationDeletion)
+                        ] + featureVector[personIndex]
+            detections.append(detection)
 
         tracked = tracker.update(np.array(detections))
 

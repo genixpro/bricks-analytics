@@ -105,6 +105,7 @@ class KalmanBoxTracker(object):
     self.hit_streak = 0
     self.age = 0
     self.featureVector = None
+    self.allowDeletion = True
 
   def update(self,bbox):
     """
@@ -149,10 +150,10 @@ def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0
   for d,det in enumerate(detections):
     for t,trk in enumerate(trackers):
       # Compute similarity metric for their feature vectors
-      if np.count_nonzero(det[4:]) == 0 or np.count_nonzero(trk[4:]) == 0:
+      if np.count_nonzero(det[5:]) == 0 or np.count_nonzero(trk[5:]) == 0:
         similarityMetric = 0
       else:
-        similarityMetric = 1.0 - scipy.spatial.distance.cosine(det[4:], trk[4:])
+        similarityMetric = 1.0 - scipy.spatial.distance.cosine(det[5:], trk[5:])
 
       if mode == 'iou':
         if similarityMetric < feature_vector_threshold:
@@ -228,13 +229,14 @@ class Sort(object):
     """
     self.frame_count += 1
     #get predicted locations from existing trackers.
-    trks = np.zeros((len(self.trackers), self.featureVectorSize + 4))
+    trks = np.zeros((len(self.trackers), self.featureVectorSize + 5))
     to_del = []
     ret = []
     for t,trk in enumerate(trks):
       pos = self.trackers[t].predict()[0]
       trk[:4] = [pos[0], pos[1], pos[2], pos[3]]
-      trk[4:] = self.trackers[t].featureVector
+      trk[4] = 1.0
+      trk[5:] = self.trackers[t].featureVector
       if(np.any(np.isnan(pos))):
         to_del.append(t)
     trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
@@ -253,18 +255,19 @@ class Sort(object):
         d = matched[np.where(matched[:,1]==t)[0],0]
         trk.update(dets[d,:][0][:4])
         trk.detIndex = d
+        trk.allowDeletion = dets[d,:][0][4]
 
         # Update the feature vector using an exponential rolling average. This helps smooth out any sudden poor detections which
         # can screw up the feature vector, even if they are tracked well
-        newFeatureVector = dets[d,:][0][4:]
+        newFeatureVector = dets[d,:][0][5:]
         if np.count_nonzero(newFeatureVector) > 0:
           trk.featureVector = (trk.featureVector * 0.7) + (newFeatureVector * 0.3)
 
     #create and initialise new trackers for unmatched detections
     for i in unmatched_dets:
-        det_bbox = dets[i,:][4:]
+        det_bbox = dets[i,:][5:]
 
-        allow = True
+        allow = bool(dets[i,:][4])
         if self.new_track_min_dist > 0:
           center = [det_bbox[0]/2 + det_bbox[2]/2, det_bbox[1]/2 + det_bbox[3]/2]
           for t,trk in enumerate(self.trackers):
@@ -276,7 +279,8 @@ class Sort(object):
         if allow:
           trk = KalmanBoxTracker(dets[i,:])
           trk.detIndex = i
-          trk.featureVector = dets[i,:][4:]
+          trk.featureVector = dets[i,:][5:]
+          trk.allowDeletion = dets[i,:][4]
           self.trackers.append(trk)
 
     i = len(self.trackers)
@@ -285,8 +289,8 @@ class Sort(object):
         if((trk.hits >= self.min_hits)): # ELECTRIC BRAIN MODIFIED THIS LINE
           ret.append(np.concatenate((d,[trk.id+1, trk.detIndex])).reshape(1,-1)) # +1 as MOT benchmark requires positive
         i -= 1
-        #remove dead tracklet
-        if(trk.time_since_update > self.max_age):
+        #remove dead tracklet if its allowed
+        if(trk.time_since_update > self.max_age and trk.allowDeletion):
           self.trackers.pop(i)
     if(len(ret)>0):
       return np.concatenate(ret)
