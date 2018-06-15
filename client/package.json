@@ -27,6 +27,7 @@
     "animo": "github:thrivingkings/animo.js",
     "auth0-lock": "^11.2.3",
     "axios": "^0.17.1",
+    "base-64": "^0.1.0",
     "blueimp-canvas-to-blob": "3.11.0",
     "blueimp-file-upload": "9.18.0",
     "blueimp-load-image": "2.14.0",
@@ -109,6 +110,7 @@
     "stompjs": "^2.3.3",
     "sweetalert": "1.1.3",
     "underscore": "^1.8.3",
+    "utf8": "^3.0.0",
     "weather-icons": "github:erikflowers/weather-icons",
     "whirl": "github:jh3y/whirl",
     "x-editable": "1.5.1"

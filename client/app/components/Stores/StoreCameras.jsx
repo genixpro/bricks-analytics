@@ -6,6 +6,8 @@ import ReactTable from 'react-table'
 import _ from 'underscore';
 import axios from "axios/index";
 import {Stomp} from 'stompjs/lib/stomp.min';
+import base64 from 'base-64';
+import utf8 from 'utf8';
 
 class StoreCameras extends React.Component {
     constructor(props) {
@@ -16,7 +18,6 @@ class StoreCameras extends React.Component {
         this.state = {
             selectedCamera: this.props.match.params.cameraId,
             cameraImageCacheBuster: Date.now().toString(),
-            storeLayoutCacheBuster: Date.now().toString(),
             cameraFrame: null,
             showCalibrationGrid: false,
             isSelectingCameraLocation: false,
@@ -27,7 +28,8 @@ class StoreCameras extends React.Component {
             calibrationObjectX: 0,
             calibrationObjectY: 0,
             calibrationObjectSize: 0,
-            calibrationObjectRotation: 0
+            calibrationObjectRotation: 0,
+            storeMapImage: null
         };
 
         if (this.camera) {
@@ -44,6 +46,7 @@ class StoreCameras extends React.Component {
 
             // Load the initial camera frame information right off the bat
             this.reloadCameraFrameInformation();
+            this.state.storeMapImage = 'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout/calibrated/" + this.camera.cameraId + "?" + Date.now().toString();
 
             // Load in the cameras current position into state variables so it can be edited
             this.state.cameraX = this.camera.cameraX || 0;
@@ -157,6 +160,7 @@ class StoreCameras extends React.Component {
 
             this.setState({calibrationObjectX, calibrationObjectY});
             this.updateCalibrationRotation();
+            this.updateCalibrationStoreMapImage();
         }
     }
 
@@ -167,6 +171,7 @@ class StoreCameras extends React.Component {
             const newSize = Math.max(5, this.state.calibrationObjectSize - 2 * Math.sign(event.deltaY));
             this.setState({calibrationObjectSize: newSize});
             event.preventDefault();
+            this.updateCalibrationStoreMapImage();
         }
     }
 
@@ -186,6 +191,52 @@ class StoreCameras extends React.Component {
         }
     }
 
+    getCameraConfigurationObject()
+    {
+        const liveImageElem = document.getElementById('live-image');
+        const storeImageElem = document.getElementById('store-image');
+        const bounds = document.getElementById('store-image-container').getBoundingClientRect();
+
+        const camera = {};
+        camera.calibrationReferencePoint = {
+            "x": ((this.state.calibrationObjectX - this.state.calibrationObjectSize/2) / bounds.width) * storeImageElem.naturalWidth,
+            "y": ((this.state.calibrationObjectY - this.state.calibrationObjectSize/2) / bounds.height) * storeImageElem.naturalHeight,
+            "unitWidth": (this.state.calibrationObjectSize / bounds.width / 5) * storeImageElem.naturalWidth,
+            "unitHeight": (this.state.calibrationObjectSize / bounds.height / 5) * storeImageElem.naturalHeight
+        };
+
+        if (this.state.cameraRotation <= (Math.PI / 4) || this.state.cameraRotation >= (Math.PI * 7.0 / 4.0))
+        {
+            camera.calibrationReferencePoint.direction = 'north';
+        }
+        else if (this.state.cameraRotation >= (Math.PI / 4) && this.state.cameraRotation <= (Math.PI * 3.0 / 4.0))
+        {
+            camera.calibrationReferencePoint.direction = 'east';
+        }
+        else if (this.state.cameraRotation >= (Math.PI * 3.0 / 4.0) && this.state.cameraRotation <= (Math.PI * 5.0 / 4.0))
+        {
+            camera.calibrationReferencePoint.direction = 'south';
+        }
+        else if (this.state.cameraRotation >= (Math.PI * 5.0 / 4.0) && this.state.cameraRotation <= (Math.PI * 7.0 / 4.0))
+        {
+            camera.calibrationReferencePoint.direction = 'west';
+        }
+
+        camera.width = liveImageElem.naturalWidth;
+        camera.height = liveImageElem.naturalHeight;
+
+        camera.cameraLocation = {
+            "x": (this.state.cameraX / bounds.width) * storeImageElem.offsetWidth,
+            "y": (this.state.cameraY / bounds.height) * storeImageElem.offsetHeight,
+        };
+
+        camera.cameraMatrix = this.state.cameraFrame.calibrationObject.cameraMatrix;
+        camera.rotationVector = this.state.cameraFrame.calibrationObject.rotationVector;
+        camera.translationVector = this.state.cameraFrame.calibrationObject.translationVector;
+        camera.distortionCoefficients = this.state.cameraFrame.calibrationObject.distortionCoefficients;
+        return camera;
+    }
+
     calibrationObjectLocationChosen()
     {
         if (this.state.isSelectingCalibrationObjectLocation)
@@ -196,54 +247,13 @@ class StoreCameras extends React.Component {
             });
             this.updateCalibrationRotation();
 
-
-            const liveImageElem = document.getElementById('live-image');
-            const storeImageElem = document.getElementById('store-image');
-            const bounds = document.getElementById('store-image-container').getBoundingClientRect();
-
-
             // Make the modification to the camera data.
             const newStore = this.props.store;
             const camera = _.findWhere(newStore.cameras, {cameraId: this.state.selectedCamera});
+            const newCamera = this.getCameraConfigurationObject();
+            Object.keys(newCamera).forEach((key) => camera[key] = newCamera[key]);
 
-            camera.calibrationReferencePoint = {
-                "x": ((this.state.calibrationObjectX - this.state.calibrationObjectSize/2) / bounds.width) * storeImageElem.naturalWidth,
-                "y": ((this.state.calibrationObjectY - this.state.calibrationObjectSize/2) / bounds.height) * storeImageElem.naturalHeight,
-                "unitWidth": (this.state.calibrationObjectSize / bounds.width / 5) * storeImageElem.naturalWidth,
-                "unitHeight": (this.state.calibrationObjectSize / bounds.height / 5) * storeImageElem.naturalHeight
-            };
-
-            if (this.state.cameraRotation <= (Math.PI / 4) || this.state.cameraRotation >= (Math.PI * 7.0 / 4.0))
-            {
-                camera.calibrationReferencePoint.direction = 'north';
-            }
-            else if (this.state.cameraRotation >= (Math.PI / 4) && this.state.cameraRotation <= (Math.PI * 3.0 / 4.0))
-            {
-                camera.calibrationReferencePoint.direction = 'east';
-            }
-            else if (this.state.cameraRotation >= (Math.PI * 3.0 / 4.0) && this.state.cameraRotation <= (Math.PI * 5.0 / 4.0))
-            {
-                camera.calibrationReferencePoint.direction = 'south';
-            }
-            else if (this.state.cameraRotation >= (Math.PI * 5.0 / 4.0) && this.state.cameraRotation <= (Math.PI * 7.0 / 4.0))
-            {
-                camera.calibrationReferencePoint.direction = 'west';
-            }
-
-            camera.width = liveImageElem.naturalWidth;
-            camera.height = liveImageElem.naturalHeight;
-
-            camera.cameraLocation = {
-                "x": (this.state.cameraX / bounds.width) * storeImageElem.offsetWidth,
-                "y": (this.state.cameraY / bounds.height) * storeImageElem.offsetHeight,
-            };
-
-            camera.cameraMatrix = this.state.cameraFrame.calibrationObject.cameraMatrix;
-            camera.rotationVector = this.state.cameraFrame.calibrationObject.rotationVector;
-            camera.translationVector = this.state.cameraFrame.calibrationObject.translationVector;
-            camera.distortionCoefficients = this.state.cameraFrame.calibrationObject.distortionCoefficients;
-
-            this.props.updateStore(newStore, () => this.setState({storeLayoutCacheBuster: Date.now().toString()}));
+            this.props.updateStore(newStore, () => this.resetCalibrationStoreMapImage());
         }
     }
 
@@ -262,6 +272,34 @@ class StoreCameras extends React.Component {
         this.setState({showCalibrationGrid: !this.state.showCalibrationGrid})
     }
 
+    resetCalibrationStoreMapImage()
+    {
+        this.setState({
+            storeMapImage: 'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout/calibrated/" + this.camera.cameraId + "?" + Date.now().toString()
+        })
+    }
+
+    /// Throttle this so we don't update the store image too often
+    updateCalibrationStoreMapImage()
+    {
+        if (_.isUndefined(this.updateCalibrationStoreMapImage__impl))
+        {
+            this.updateCalibrationStoreMapImage__impl = _.throttle(() =>
+            {
+                axios({
+                    method: 'post',
+                    url: 'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout/calibrated/" + this.camera.cameraId,
+                    data: this.getCameraConfigurationObject(),
+                    responseType: 'arraybuffer'
+                }).then((response) =>
+                {
+                    const newState = {storeMapImage: 'data:image/png;base64,' + new Buffer(response.data, 'binary').toString('base64')}; // don't ask why utf8 conversion is needed here, it makes no sense to me either
+                    this.setState(newState);
+                });
+            }, 1000);
+        }
+        this.updateCalibrationStoreMapImage__impl();
+    }
 
 
     render() {
@@ -441,7 +479,7 @@ class StoreCameras extends React.Component {
                                     }
                                     <img id="store-image"
                                          className="store-image"
-                                         src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout/calibrated/" + this.camera.cameraId + "?" + this.state.storeLayoutCacheBuster}
+                                         src={this.state.storeMapImage}
                                          onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
                                          onWheel={this.onWheelMoved.bind(this)}
                                     />

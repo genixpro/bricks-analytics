@@ -103,6 +103,28 @@ class StoreLayoutWithCalibration(object):
     def __acl__(self):
         return [(Allow, Everyone, 'everything')]
 
+    def post(self):
+        # Prepare variables
+        imageAnalyzer = ImageAnalyzer.sharedInstance()
+        id = int(self.request.matchdict['id'])
+
+        # Fetch the objects from the database
+        layout = self.storeLayouts.get(id)
+
+        # Convert the raw data store map into a numpy array
+        rawImage = Image.open(layout)
+        width = rawImage.width
+        height = rawImage.height
+        storeMapImage = numpy.array(rawImage.getdata(), numpy.uint8).reshape(height,width, 4)
+        storeMapImage = imageAnalyzer.showCameraCalibrationOnStoreMap(storeMapImage, dict(self.request.json_body))
+
+        # Convert the numpy array for the image back into a png file.
+        image = Image.fromarray(storeMapImage, mode=None)
+        b = io.BytesIO()
+        image.save(b, "PNG")
+        b.seek(0)
+        
+        return b
 
     def get(self):
         # Prepare variables
