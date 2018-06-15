@@ -4,9 +4,14 @@ from pyramid.response import Response
 from pyramid.view import view_config
 from pyramid.security import Allow
 from pyramid.security import Everyone
+from pprint import pprint
 from ebretail.models.counter import get_next_object_id
+from ebretail.components.image_analyzer import ImageAnalyzer
+from PIL import Image
 import gridfs
 import pymongo
+import numpy
+import io
 
 
 @resource(collection_path='/store', path='/store/{id}', cors_origins=('*',), cors_max_age=3600)
@@ -85,6 +90,64 @@ class StoreLayout(object):
         self.storeLayouts.put(layout, **metadata)
 
         return None
+
+
+@resource(path='/store/{id}/store_layout/calibrated/{cameraId}', cors_origins=('*',), cors_max_age=3600, renderer='file')
+class StoreLayoutWithCalibration(object):
+    def __init__(self, request, context=None):
+        self.request = request
+
+        self.storeLayouts = gridfs.GridFS(request.registry.db, collection='storeLayout')
+        self.storesCollection = request.registry.db.stores
+
+    def __acl__(self):
+        return [(Allow, Everyone, 'everything')]
+
+
+    def get(self):
+        # Prepare variables
+        imageAnalyzer = ImageAnalyzer.sharedInstance()
+        id = int(self.request.matchdict['id'])
+
+        # Fetch the objects from the database
+        layout = self.storeLayouts.get(id)
+        store = self.storesCollection.find_one({"_id": id})
+
+        # Return nothing if no objects were found
+        if layout is None:
+            return None
+        if store is None:
+            return None
+
+        # Convert the raw data store map into a numpy array
+        rawImage = Image.open(layout)
+        width = rawImage.width
+        height = rawImage.height
+        storeMapImage = numpy.array(rawImage.getdata(), numpy.uint8).reshape(height,width, 4)
+
+
+        # Find the camera that we are getting calibration for
+        camera = None
+        for storeCamera in store['cameras']:
+            if str(storeCamera['cameraId']) == str(self.request.matchdict['cameraId']):
+                camera = storeCamera
+
+        # If the camera is not found, return nothing
+        if camera is None:
+            return None
+
+        # Only draw the calibration information if it is present
+        if 'calibrationReferencePoint' in camera:
+            # Finally, compute the store map image with the calibration information added.
+            storeMapImage = imageAnalyzer.showCameraCalibrationOnStoreMap(storeMapImage, camera)
+
+        # Convert the numpy array for the image back into a png file.
+        image = Image.fromarray(storeMapImage, mode=None)
+        b = io.BytesIO()
+        image.save(b, "PNG")
+        b.seek(0)
+
+        return b
 
 
 @resource(collection_path='/store/{storeId}/visitors/', path='/store/{storeId}/visitors/{visitorId}', cors_origins=('*',), cors_max_age=3600, renderer='bson')

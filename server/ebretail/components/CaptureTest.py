@@ -16,7 +16,7 @@ import requests
 import pika
 import threading
 import io
-
+from scipy import ndimage
 
 def usage(argv):
     cmd = os.path.basename(argv[0])

@@ -1,5 +1,5 @@
 import React from 'react';
-import {Col, Row, Panel, Alert} from 'react-bootstrap';
+import {Col, Row, Panel, Alert, Checkbox} from 'react-bootstrap';
 import {withRouter, Link} from "react-router-dom";
 import {branch} from "recompose";
 import ReactTable from 'react-table'
@@ -16,7 +16,9 @@ class StoreCameras extends React.Component {
         this.state = {
             selectedCamera: this.props.match.params.cameraId,
             cameraImageCacheBuster: Date.now().toString(),
+            storeLayoutCacheBuster: Date.now().toString(),
             cameraFrame: null,
+            showCalibrationGrid: false,
             isSelectingCameraLocation: false,
             isSelectingCalibrationObjectLocation: false,
             cameraX: 0,
@@ -195,6 +197,7 @@ class StoreCameras extends React.Component {
             this.updateCalibrationRotation();
 
 
+            const liveImageElem = document.getElementById('live-image');
             const storeImageElem = document.getElementById('store-image');
             const bounds = document.getElementById('store-image-container').getBoundingClientRect();
 
@@ -227,6 +230,9 @@ class StoreCameras extends React.Component {
                 camera.calibrationReferencePoint.direction = 'west';
             }
 
+            camera.width = liveImageElem.naturalWidth;
+            camera.height = liveImageElem.naturalHeight;
+
             camera.cameraLocation = {
                 "x": (this.state.cameraX / bounds.width) * storeImageElem.offsetWidth,
                 "y": (this.state.cameraY / bounds.height) * storeImageElem.offsetHeight,
@@ -237,7 +243,7 @@ class StoreCameras extends React.Component {
             camera.translationVector = this.state.cameraFrame.calibrationObject.translationVector;
             camera.distortionCoefficients = this.state.cameraFrame.calibrationObject.distortionCoefficients;
 
-            this.props.updateStore(newStore);
+            this.props.updateStore(newStore, () => this.setState({storeLayoutCacheBuster: Date.now().toString()}));
         }
     }
 
@@ -249,6 +255,11 @@ class StoreCameras extends React.Component {
     {
         const angle = Math.atan2(this.state.calibrationObjectY - this.state.cameraY, this.state.calibrationObjectX - this.state.cameraX);
         this.setState({cameraRotation: angle});
+    }
+
+    showCalibrationGridChanged()
+    {
+        this.setState({showCalibrationGrid: !this.state.showCalibrationGrid})
     }
 
 
@@ -328,11 +339,24 @@ class StoreCameras extends React.Component {
                                     </div>
 
                                     <div className="panel-body">
-                                        <img className="live-image" src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/cameras/" + this.camera.cameraId + "/image?" + this.state.cameraImageCacheBuster} />
+                                        {
+                                            this.state.showCalibrationGrid
+                                                ? <img id='live-image' className="live-image" src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/cameras/" + this.camera.cameraId + "/calibration?" + this.state.cameraImageCacheBuster} />
+                                                : <img id='live-image' className="live-image" src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/cameras/" + this.camera.cameraId + "/image?" + this.state.cameraImageCacheBuster} />
+                                        }
                                     </div>
                                 </div>
                             </Col>
                             <Col md={3}>
+                                <div className="panel b">
+                                    <div className="panel-heading">
+                                        <h4 className="m0">Show</h4>
+                                    </div>
+                                    <div className="panel-body">
+                                        <Checkbox title={"Show Calibration Grid"} checked={this.state.showCalibrationGrid} onChange={this.showCalibrationGridChanged.bind(this)}>Show Calibration Grid</Checkbox>
+                                    </div>
+                                </div>
+
                                 <div className="panel b">
                                     <div className="panel-heading">
                                         <h4 className="m0">Calibration</h4>
@@ -417,7 +441,7 @@ class StoreCameras extends React.Component {
                                     }
                                     <img id="store-image"
                                          className="store-image"
-                                         src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout"}
+                                         src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout/calibrated/" + this.camera.cameraId + "?" + this.state.storeLayoutCacheBuster}
                                          onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
                                          onWheel={this.onWheelMoved.bind(this)}
                                     />

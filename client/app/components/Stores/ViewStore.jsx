@@ -78,7 +78,7 @@ class ViewStore extends React.Component {
     }
 
 
-    updateStore(newStore)
+    updateStore(newStore, callback)
     {
         this.setState({
             store: newStore,
@@ -95,6 +95,11 @@ class ViewStore extends React.Component {
                 isUpdatingStore: false,
                 showUpdateSuccess: true
             });
+
+            if (callback)
+            {
+                callback();
+            }
 
             setTimeout(() => this.setState({showUpdateSuccess: false}), 5000);
         }, () =>

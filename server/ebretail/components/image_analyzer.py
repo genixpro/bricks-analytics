@@ -810,6 +810,134 @@ class ImageAnalyzer:
 
         return timeSeriesFrame, state
 
+    def showCameraCalibrationOnStoreMap(self, storeMapImage, cameraConfiguration):
+        """
+            This function draws the ground plane of the camera onto the store map as a grid. This allows
+            you to easily view the calibration of that store map.
+
+            :param storeMapImage:
+            :param cameraConfiguration:
+            :return:
+        """
+
+        storeMapImage = storeMapImage.copy()
+        gridWidth = 10
+        gridHeight = 10
+
+        columns = []
+        for x in range(gridWidth+1):
+            row = []
+            for y in range(gridHeight+1):
+                location = [(cameraConfiguration['width'] / 10) * x, (cameraConfiguration['height'] / 10) * y]
+                position = self.inverseScreenLocation(
+                    location=location,
+                    height=0,
+                    rotationVector=np.array(cameraConfiguration['rotationVector']),
+                    translationVector=np.array(cameraConfiguration['translationVector']),
+                    cameraMatrix=np.array(cameraConfiguration['cameraMatrix']),
+                    calibrationReference=cameraConfiguration['calibrationReferencePoint']
+                )
+
+                row.append((int(position[0]), int(position[1])))
+
+            columns.append(row)
+
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        textScale = 0.5
+
+        mainColor = (0, 0, 255, 255)
+        lineThickness = 2
+        textThickness = 1
+        for x in range(gridWidth):
+            for y in range(gridHeight):
+                topLeft = columns[x][y]
+                topRight = columns[x + 1][y]
+                bottomLeft = columns[x][y + 1]
+                bottomRight = columns[x + 1][y + 1]
+
+                cv2.line(storeMapImage, topLeft, topRight, mainColor, lineThickness)
+                cv2.line(storeMapImage, topLeft, bottomLeft, mainColor, lineThickness)
+                cv2.line(storeMapImage, topRight, bottomRight, mainColor, lineThickness)
+                cv2.line(storeMapImage, bottomLeft, bottomRight, mainColor, lineThickness)
+
+                centerX = int(topLeft[0]/2 + bottomRight[0] / 2)
+                centerY = int(topLeft[1]/2 + bottomRight[1] / 2)
+
+                cv2.putText(storeMapImage, '(' + str(x) + ',' + str(y) + ')',(centerX - 15, centerY - 10), font, textScale, mainColor, textThickness, cv2.LINE_AA)
+
+        return storeMapImage
+
+    def showCameraCalibrationGridOnCameraImage(self, cameraImage, cameraConfiguration):
+        cameraImage = cameraImage.copy()
+
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        textScale = 0.5
+
+        mainColor = (255, 255, 255, 255)
+        outlineColor = (0, 0, 128, 255)
+
+        lineThickness = 1
+        outlineThickness = 3
+        textThickness = 1
+        textOutlineThickness = 3
+
+        gridWidth = 10
+        gridHeight = 10
+
+        textOffsetX = 5
+        textOffsetY = 18
+
+        startX = outlineThickness/2
+        startY = outlineThickness/2
+
+        imageWidth = cameraConfiguration['width'] - startX*2
+        imageHeight = cameraConfiguration['height'] - startY*2
+
+        # First draw all the outlines
+        for x in range(gridWidth):
+            for y in range(gridHeight):
+                left = int(imageWidth * x / gridWidth + startX)
+                right = int(imageWidth * (x+1) / gridWidth + startX)
+
+                top = int(imageHeight * y / gridHeight + startY)
+                bottom = int(imageHeight * (y+1) / gridHeight + startY)
+
+                topLeft = (left, top)
+                topRight = (right, top)
+                bottomLeft = (left, bottom)
+                bottomRight = (right, bottom)
+
+                cv2.line(cameraImage, topLeft, topRight, outlineColor, outlineThickness)
+                cv2.line(cameraImage, topLeft, bottomLeft, outlineColor, outlineThickness)
+                cv2.line(cameraImage, topRight, bottomRight, outlineColor, outlineThickness)
+                cv2.line(cameraImage, bottomLeft, bottomRight, outlineColor, outlineThickness)
+                cv2.putText(cameraImage, '(' + str(x) + ',' + str(y) + ')',(left + textOffsetX, top + textOffsetY), font, textScale, outlineColor, textOutlineThickness, cv2.LINE_AA)
+
+        # Now draw the main lines and text in a different color and with a thinner line.
+        # This helps the lines to be more visible whether the image is bright or dark
+        for x in range(gridWidth):
+            for y in range(gridHeight):
+                left = int(imageWidth * x / gridWidth + startX)
+                right = int(imageWidth * (x+1) / gridWidth + startX)
+
+                top = int(imageHeight * y / gridHeight + startY)
+                bottom = int(imageHeight * (y+1) / gridHeight + startY)
+
+                topLeft = (left, top)
+                topRight = (right, top)
+                bottomLeft = (left, bottom)
+                bottomRight = (right, bottom)
+
+                cv2.line(cameraImage, topLeft, topRight, mainColor, lineThickness)
+                cv2.line(cameraImage, topLeft, bottomLeft, mainColor, lineThickness)
+                cv2.line(cameraImage, topRight, bottomRight, mainColor, lineThickness)
+                cv2.line(cameraImage, bottomLeft, bottomRight, mainColor, lineThickness)
+
+                # Draw the text one pixel up and to the left. This helps make it more legible and gives it a 3d effect.
+                cv2.putText(cameraImage, '(' + str(x) + ',' + str(y) + ')',(left + textOffsetX - 1, top + textOffsetY - 1), font, textScale, mainColor, textThickness, cv2.LINE_AA)
+
+        return cameraImage
+
     @staticmethod
     def sharedInstance():
         global globalSharedInstance

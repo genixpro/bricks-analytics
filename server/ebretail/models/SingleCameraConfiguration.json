@@ -15,6 +15,12 @@
         "cameraLocation": {
           "$ref": "Coordinate.json#/definitions/Coordinate"
         },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
         "calibrationReferencePoint": {
           "$ref": "Coordinate.json#/definitions/Coordinate",
           "type": "object",
