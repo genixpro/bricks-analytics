@@ -31,7 +31,7 @@ class StoreCameras extends React.Component {
         };
 
         if (this.camera) {
-            var headers = {durable: false, "auto-delete": false, exclusive: false};
+            var headers = {durable: false, "auto-delete": true, exclusive: true};
             this.cameraSubscription = this.props.messagingClient.subscribe("/exchange/" + this.camera.cameraId, (message) =>
             {
                 const body = JSON.parse(message.body);

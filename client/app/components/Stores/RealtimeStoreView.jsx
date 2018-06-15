@@ -16,7 +16,7 @@ class RealtimeStoreView extends React.Component {
 
     componentDidMount()
     {
-        var headers = {durable: false, "auto-delete": false, exclusive: false};
+        var headers = {durable: false, "auto-delete": true, exclusive: true};
         this.storeSubscription = this.props.messagingClient.subscribe("/exchange/store-time-series-frames-" + this.props.store._id, (message) =>
         {
             const body = JSON.parse(message.body);
@@ -41,7 +41,8 @@ class RealtimeStoreView extends React.Component {
 
                     if (!found)
                     {
-                        newState.fadingPeople.push(person);
+                        const fadingPerson = _.clone(person);
+                        newState.fadingPeople.push(fadingPerson);
                     }
                 });
             }
@@ -68,9 +69,7 @@ class RealtimeStoreView extends React.Component {
 
         const personEnterTransitionStyles = {
             entering: { opacity: 0 },
-            entered:  { opacity: 1 },
-            exiting: { opacity: 1 },
-            exited:  { opacity: 0 }
+            entered:  { opacity: 1 }
         };
 
         const personExitTransitionStyles = {
