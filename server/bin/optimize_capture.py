@@ -121,10 +121,12 @@ if __name__ == '__main__':
             print("New Best!")
             print("Changing:")
             filteredHyperParameters = {key: value for key, value in best['hyperParameters'].items() if key in keysToOptimize}
-            print(pformat(filteredHyperParameters, width=200), "  Loss: ", best['loss'])
+            print(pformat(filteredHyperParameters, width=160))
+            print(pformat(best['detailedLoss'], width=160))
             print("To:")
             filteredHyperParameters = {key: value for key, value in optimizedBest['hyperParameters'].items() if key in keysToOptimize}
-            print(pformat(filteredHyperParameters, width=200), "  Loss: ", optimizedBest['loss'])
+            print(pformat(filteredHyperParameters, width=160))
+            print(pformat(optimizedBest['detailedLoss'], width=160))
             print("Accepting changed hyper-parameters.")
             for key in keysToOptimize:
                 hyperParameters[key] = optimizedBest['hyperParameters'][key]
@@ -133,10 +135,12 @@ if __name__ == '__main__':
             print("Did not beat existing benchmark by at least 1 point.")
             print("Keeping:")
             filteredHyperParameters = {key: value for key, value in best['hyperParameters'].items() if key in keysToOptimize}
-            print(pformat(filteredHyperParameters, width=200), "  Loss: ", best['loss'])
+            print(pformat(filteredHyperParameters, width=160))
+            print(pformat(best['detailedLoss'], width=160))
             print("Rejected:")
             filteredHyperParameters = {key: value for key, value in optimizedBest['hyperParameters'].items() if key in keysToOptimize}
-            print(pformat(filteredHyperParameters, width=200), "  Loss: ", optimizedBest['loss'])
+            print(pformat(filteredHyperParameters, width=160))
+            print(pformat(optimizedBest['detailedLoss'], width=160))
             print("Rejected this update.")
 
         printResults(best, "Current Best")

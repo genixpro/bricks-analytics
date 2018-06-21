@@ -646,6 +646,7 @@ class CaptureTest:
         score += extraTracksCostTotal
 
         details = {
+            "totalCost": score / len(timeSeriesFrames),
             "falsePositiveCost": falsePositiveCostTotal / len(timeSeriesFrames),
             "falseNegativeCostTotal": falseNegativeCostTotal / len(timeSeriesFrames),
             "distanceCostTotal": distanceCostTotal / len(timeSeriesFrames),
