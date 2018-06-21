@@ -369,15 +369,18 @@ class CaptureTest:
                 "color": (255, 0, 0)
             } for annotation in self.annotations['frames'][str(frameIndex + 1)]]
 
-            for person in timeSeriesFrame['people']:
+            multiCameraFramePeople = [dict(person) for person in multiCameraFrame['people']]
+            timeSeriesPeople = [dict(person) for person in timeSeriesFrame['people']]
+
+            for person in timeSeriesPeople:
                 person['color'] = (0, 255, 0)
                 person['x'] = person['x'] * self.testData['storeMap']['width']
                 person['y'] = person['y'] * self.testData['storeMap']['height']
-            for person in multiCameraFrame['people']:
+            for person in multiCameraFramePeople:
                 person['color'] = (0, 0, 255)
 
             storeMapImages.append(
-                self.drawDebugStoreMap(multiCameraFrame['people'] + timeSeriesFrame['people'] + groundTruthPoints,
+                self.drawDebugStoreMap(multiCameraFramePeople + timeSeriesPeople + groundTruthPoints,
                                        boxSize=100))
         return storeMapImages
 
@@ -559,8 +562,8 @@ class CaptureTest:
                     ]
 
                     personPoint = [
-                        person['x'],
-                        person['y']
+                        person['x'] * self.testData['storeMap']['width'],
+                        person['y'] * self.testData['storeMap']['height']
                     ]
 
                     distance = scipy.spatial.distance.euclidean(annotationPoint, personPoint)
@@ -623,25 +626,30 @@ class CaptureTest:
         falseNegativeCostEach = 5000
         falsePositiveCostTotal = 0
         falseNegativeCostTotal = 0
+        distanceCostMax = 1000
         distanceCostTotal = 0
         for frameIndex, timeSeriesFrame in enumerate(timeSeriesFrames):
             people = timeSeriesFrame['people']
             annotations = allAnnotations['frames'][str(frameIndex + 1)]
+            frameCost = 0
             for person in people:
                 if person['groundTruth'] is None:
                     # Punishment - this person should have had ground truth associated with them
                     score += falsePositiveCostEach
                     falsePositiveCostTotal += falsePositiveCostEach
+                    frameCost + falsePositiveCostEach
                 else:
-                    score += person['groundTruthDistance']
-                    distanceCostTotal += person['groundTruthDistance']
+                    score += min(distanceCostMax, person['groundTruthDistance'])
+                    distanceCostTotal += min(distanceCostMax, person['groundTruthDistance'])
+                    frameCost += min(distanceCostMax, person['groundTruthDistance'])
             for annotation in annotations:
                 if 'visitorId' not in annotation or annotation['visitorId'] is None:
                     # Punishment - this ground truth should have had a track associated with it
                     score += falseNegativeCostEach
                     falseNegativeCostTotal += falseNegativeCostEach
+                    frameCost += falseNegativeCostEach
 
-        # Lastly, punish every detected person over and above the number of known tags
+                    # Lastly, punish every detected person over and above the number of known tags
         extraTracksCostTotal = max(0, len(personTags) - len(allTags)) * falseNegativeCostEach
         score += extraTracksCostTotal
 
