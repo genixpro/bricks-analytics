@@ -130,7 +130,8 @@ class ImageAnalyzer:
         self.trackingFeatureDim = 128
 
         self.detectionCache = {
-            'people': {}
+            'people': {},
+            'calibrationObjects': {}
         }
 
     def setHyperParameters(self, hyperParameters):
@@ -722,7 +723,7 @@ class ImageAnalyzer:
         return currentPeople, state, debugImage, personImages
 
 
-    def detectCalibrationObject(self, image, state, debugImage):
+    def detectCalibrationObject(self, image, state, debugImage, cacheId=None):
         """
             Tries to detect the presence of the calibration object, which is just a standard checkerboard pattern.
 
@@ -731,6 +732,10 @@ class ImageAnalyzer:
             :param debugImage: An image upon which the debugging information can be written
             :return (calibrationData, state, debugImage)
         """
+        if cacheId is not None:
+            if cacheId in self.detectionCache['calibrationObjects']:
+                return self.detectionCache['calibrationObjects'][cacheId]
+
         chessBoardSize = (4,4)
 
         # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
@@ -746,6 +751,8 @@ class ImageAnalyzer:
         flags = cv2.CALIB_CB_FAST_CHECK + cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_NORMALIZE_IMAGE
         found, corners = cv2.findChessboardCorners(image=gray_image, patternSize=chessBoardSize, flags=flags)
 
+        calibrationObject = None
+
         if found:
             cameraMatrix = np.array([[640.0, 0.0, 320], [0.0, 480.0, 240], [0.0, 0.0, 1.0]])
             cameraDistortionCoefficients = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
@@ -757,14 +764,17 @@ class ImageAnalyzer:
             # Update the debug image with the calibration object drawn on
             cv2.drawChessboardCorners(debugImage, chessBoardSize, corners, found)
 
-            return ({
+            calibrationObject = {
                 "cameraMatrix": cameraMatrix.tolist(),
                 "rotationVector": cameraRotationVector.tolist(),
                 "translationVector": cameraTranslationVector.tolist(),
                 "distortionCoefficients": cameraDistortionCoefficients.tolist()
-            }, state, debugImage)
-        else:
-            return (None, state, debugImage)
+            }
+
+        if cacheId is not None:
+            self.detectionCache['calibrationObjects'][cacheId] = (calibrationObject, state, debugImage)
+
+        return (calibrationObject, state, debugImage)
 
 
     def processMultiCameraFrameTimeSeries(self, multiCameraFrame, state, storeConfiguration):

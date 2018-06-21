@@ -7,10 +7,11 @@ import json
 from pprint import pprint
 from ebretail.components.CaptureTest import CaptureTest
 import hyperopt
+import cProfile
 
 
 
-def computeAccuracy(hyperParameters):
+def computeAccuracy_impl(hyperParameters):
     testFile = '/home/bradley/bricks-analytics-data/session1/capture1.json'
 
     test = CaptureTest(testFile)
@@ -56,3 +57,15 @@ def computeAccuracy(hyperParameters):
     for i in range(2):
         print('=' * 30)
     return results
+
+
+def computeAccuracy(hyperParameters):
+    return computeAccuracy_impl(hyperParameters)
+
+#     script = """
+# import ebretail.components.optimization
+# import json
+# ebretail.components.optimization.computeAccuracy_impl(json.loads(\"\"\"""" + json.dumps(hyperParameters) + """\"\"\"))
+# """
+#
+#     cProfile.run(compile(script, "test.py", 'exec'), sort='cumulative')

@@ -93,12 +93,17 @@ if __name__ == '__main__':
 
         print("Testing fields: ", keysToOptimize)
 
-        trials = MongoTrials('mongo://localhost:27017/ebretail_optimization/jobs', exp_key='exp' + str(experiment))
-        hyperopt.fmin(fn=ebretail.components.optimization.computeAccuracy,
-                    space=trialSpace,
-                    algo=hyperopt.tpe.suggest,
-                    max_evals=25,
-                    trials=trials)
+        try:
+            trials = MongoTrials('mongo://localhost:27017/ebretail_optimization/jobs', exp_key='exp' + str(experiment))
+            hyperopt.fmin(fn=ebretail.components.optimization.computeAccuracy,
+                        space=trialSpace,
+                        algo=hyperopt.tpe.suggest,
+                        max_evals=10 + experiment, # We make the optimization sequences longer as the system moves along, since it gets harder and harder to find a good optimization
+                        trials=trials)
+        except Exception:
+            print("Crashed! Retrying.")
+            continue
+
         optimizedBest = min(*trials.results, key=lambda result: result['loss'])
 
         print("Tested:")
@@ -120,6 +125,7 @@ if __name__ == '__main__':
             print("Accepting changed hyper-parameters.")
             for key in keysToOptimize:
                 hyperParameters[key] = optimizedBest['hyperParameters'][key]
+            best = optimizedBest
         else:
             print("Did not beat existing benchmark.")
             print("Keeping:")
