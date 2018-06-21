@@ -6,42 +6,17 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", "lib", "BlurDetection2"))
 
 import os
-import uuid
-import shutil
-import io
 import threading
 import numpy as np
 from pprint import pprint
-import scipy
+import scipy.linalg
 import scipy.spatial
 import cv2
-import json
 import uuid
 import datetime
-import math
-import skimage.util
 from datetime import datetime
-import requests
-from pyramid.response import Response
-from PIL import Image
-from pyramid.view import view_config
-from ebretail.models.validate import validateSingleCameraFrame
-
-from config import load_config
-from dataset.factory import create as create_dataset
-from nnet import predict
-from dataset.pose_dataset import data_to_input
-from multiperson.detections import extract_detections
-from multiperson.predict import SpatialModel, eval_graph, get_person_conf_multicut
-from multiperson.visualize import PersonDraw, visualize_detections
-
 from sort import Sort
-
 from blur_detection import estimate_blur
-from blur_detection import fix_image_size
-from blur_detection import pretty_blur_map
-
-import tensorflow as tf
 
 globalSharedInstanceLock = threading.RLock()
 globalSharedInstance = None
@@ -56,13 +31,6 @@ class ImageAnalyzer:
     """
 
     def __init__(self):
-        # Configure the pose detection model
-        self.cfg = load_config(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "config", "pose_cfg_multi.yaml"))
-        self.dataset = create_dataset(self.cfg)
-        self.sm = SpatialModel(self.cfg)
-        self.sm.load()
-        self.draw_multi = PersonDraw()
-
         self.trackingSession = None
 
         # How frequent does the person detector run
@@ -143,6 +111,19 @@ class ImageAnalyzer:
         self.hyperParameters = hyperParameters
 
     def initializeTrackingSession(self):
+        from multiperson.visualize import PersonDraw
+        from multiperson.predict import SpatialModel
+        from dataset.factory import create as create_dataset
+        from config import load_config
+        import tensorflow as tf
+
+        # Configure the pose detection model
+        self.cfg = load_config(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "config", "pose_cfg_multi.yaml"))
+        self.dataset = create_dataset(self.cfg)
+        self.sm = SpatialModel(self.cfg)
+        self.sm.load()
+        self.draw_multi = PersonDraw()
+
         trackingCheckpointFilename = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", "lib", "deep-sort", "mars-small128.pb")
         trackingInputName = 'images'
         trackingOutputName = 'features'
@@ -245,6 +226,7 @@ class ImageAnalyzer:
         }
 
         if self.validationEnabled:
+            from ebretail.models.validate import validateSingleCameraFrame
             validateSingleCameraFrame(singleCameraFrame)
 
         return (singleCameraFrame, state, personImages)
@@ -520,11 +502,15 @@ class ImageAnalyzer:
 
         if not (cacheId is not None and cacheId in self.detectionCache['people']):
             if not self.poseSess:
-                self.poseSess, self.poseInputs, self.poseOutputs = predict.setup_pose_prediction(self.cfg)
+                # Only make these imports if we have to
+                from multiperson.predict import eval_graph, get_person_conf_multicut
+                from multiperson.detections import extract_detections
+                from dataset.pose_dataset import data_to_input
+                from nnet import predict
 
+                self.poseSess, self.poseInputs, self.poseOutputs = predict.setup_pose_prediction(self.cfg)
             if not self.trackingSession:
                 self.initializeTrackingSession()
-
         if not state:
             state = {
                 'stateId': str(uuid.uuid4())

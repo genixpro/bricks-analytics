@@ -16,7 +16,6 @@ import requests
 import pika
 import threading
 import io
-from scipy import ndimage
 import scipy.optimize
 import scipy.spatial
 import pickle
@@ -695,4 +694,5 @@ class CaptureTest:
             self.imageAnalyzer.detectionCache = pickle.load(open(cacheFile, 'rb'))
 
     def saveDetectionCache(self, cacheFile):
-        pickle.dump(self.imageAnalyzer.detectionCache, open(cacheFile, 'wb'))
+        if not os.path.exists(cacheFile):
+            pickle.dump(self.imageAnalyzer.detectionCache, open(cacheFile, 'wb'))
