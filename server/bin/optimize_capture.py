@@ -106,8 +106,15 @@ if __name__ == '__main__':
             filteredHyperParameters = {key: value for key, value in result['hyperParameters'].items() if key in keysToOptimize}
             print(pformat(filteredHyperParameters), "  Loss: ", result['loss'])
 
+        for l in range(4):
+            print('=' * 20)
+
         if optimizedBest['loss'] < best['loss']:
             print("New Best!")
+            print("Changing:")
+            filteredHyperParameters = {key: value for key, value in best['hyperParameters'].items() if key in keysToOptimize}
+            print(pformat(filteredHyperParameters), "  Loss: ", optimizedBest['loss'])
+            print("To:")
             filteredHyperParameters = {key: value for key, value in optimizedBest['hyperParameters'].items() if key in keysToOptimize}
             print(pformat(filteredHyperParameters), "  Loss: ", optimizedBest['loss'])
             print("Accepting changed hyper-parameters.")
