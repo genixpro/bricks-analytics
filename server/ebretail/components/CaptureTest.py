@@ -220,17 +220,29 @@ class CaptureTest:
         for camera in self.testData['cameras']:
             states[camera['name']] = {}
 
+        imageCacheFile = os.path.join(os.path.dirname(self.fileName), os.path.basename(self.fileName).split('.')[0] + '-images.pickle')
+
+        if os.path.exists(imageCacheFile):
+            cameraFrameImages = pickle.load(open(imageCacheFile, 'rb'))
+        else:
+            cameraFrameImages = []
+            for i in range(self.testData['numberOfImages']):
+                imagePath = os.path.join(os.path.dirname(self.fileName), self.testData['directory'],
+                                         'image-' + str(i).zfill(5) + '.jpg')
+
+                captureFullImage = Image.open(imagePath)
+
+                # Break it apart into separate images for each camera
+                cameraImages = self.breakApartImage(captureFullImage, self.testData['cameras'])
+
+                cameraFrameImages.append(cameraImages)
+            pickle.dump(cameraFrameImages, open(imageCacheFile, 'wb'))
+
         # Process each of the main sequence images
         resultDebugImages = []
         resultSingleCameraFrames = []
         for i in range(self.testData['numberOfImages']):
-            imagePath = os.path.join(os.path.dirname(self.fileName), self.testData['directory'],
-                                     'image-' + str(i).zfill(5) + '.jpg')
-
-            captureFullImage = Image.open(imagePath)
-
-            # Break it apart into separate images for each camera
-            cameraImages = self.breakApartImage(captureFullImage, self.testData['cameras'])
+            cameraImages = cameraFrameImages[i]
 
             debugImages = []
 
