@@ -80,7 +80,7 @@ class CaptureTest:
         for pointIndex, point in enumerate(points):
             ids = [pointIndex]
             if 'detectionIds' in point:
-                ids = point['detectionIds']
+                ids = list(point['detectionIds']) # clone the list
             elif 'visitorId' in point:
                 ids = [point['visitorId']]
             elif 'id' in point:
