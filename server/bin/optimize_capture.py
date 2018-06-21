@@ -122,6 +122,10 @@ if __name__ == '__main__':
                 hyperParameters[key] = optimizedBest['hyperParameters'][key]
         else:
             print("Did not beat existing benchmark.")
+            print("Keeping:")
+            filteredHyperParameters = {key: value for key, value in best['hyperParameters'].items() if key in keysToOptimize}
+            print(pformat(filteredHyperParameters, width=200), "  Loss: ", best['loss'])
+            print("Rejected:")
             filteredHyperParameters = {key: value for key, value in optimizedBest['hyperParameters'].items() if key in keysToOptimize}
             print(pformat(filteredHyperParameters, width=200), "  Loss: ", optimizedBest['loss'])
             print("Rejected this update.")
