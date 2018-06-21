@@ -47,7 +47,8 @@ def computeAccuracy_impl(hyperParameters):
     results = {
         "loss": score,
         'status': hyperopt.STATUS_OK,
-        "hyperParameters": hyperParameters
+        "hyperParameters": hyperParameters,
+        "detailedLoss": details
     }
 
     # Print everything

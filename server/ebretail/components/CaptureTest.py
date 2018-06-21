@@ -178,8 +178,9 @@ class CaptureTest:
 
                 draw(debugImage, imgpts)
 
-                # cv2.imshow('calibration-' + str(cameraIndex), debugImage)
-                # cv2.waitKey(1000)
+                if 'test_capture' in sys.argv[0]:
+                    cv2.imshow('calibration-' + str(cameraIndex), debugImage)
+                    cv2.waitKey(1000)
 
             singleCameraConfigurations.append(cameraConfiguration)
 
@@ -280,8 +281,9 @@ class CaptureTest:
 
                 singleCameraFrames.append(singleCameraFrame)
 
-                # cv2.imshow(camera['name'], debugImage)
-                # cv2.waitKey(1)
+                if 'test_capture' in sys.argv[0]:
+                    cv2.imshow(camera['name'], debugImage)
+                    cv2.waitKey(1)
 
                 debugImages.append(debugImage)
 
@@ -602,7 +604,12 @@ class CaptureTest:
             for person in people:
                 if person['visitorId'] in personTags and len(personTags[person['visitorId']]) > 0:
                     # Determine the dominant ground truth for this person
-                    bestGroundTruth = max(*personTags[person['visitorId']].keys(), key=lambda tag: personTags[person['visitorId']][tag] if tag in personTags[person['visitorId']] else 0)
+                    bestScore = None
+                    bestGroundTruth = None
+                    for tag in personTags[person['visitorId']].keys():
+                        if bestScore is None or personTags[person['visitorId']][tag] > bestScore:
+                            bestScore = personTags[person['visitorId']][tag]
+                            bestGroundTruth = tag
                 else:
                     bestGroundTruth = None
 
@@ -612,8 +619,8 @@ class CaptureTest:
                     person['annotation']['visitorId'] = person['visitorId']
 
         # Now we add up all the distances as score, and all the extras as punishment
-        falsePositiveCostEach = 1000
-        falseNegativeCostEach = 1000
+        falsePositiveCostEach = 5000
+        falseNegativeCostEach = 5000
         falsePositiveCostTotal = 0
         falseNegativeCostTotal = 0
         distanceCostTotal = 0

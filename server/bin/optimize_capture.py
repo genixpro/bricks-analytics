@@ -81,7 +81,7 @@ if __name__ == '__main__':
         start = datetime.datetime.now()
 
         # Pick two variables to optimize
-        keysToOptimize = random.sample(space.keys(), 2)
+        keysToOptimize = random.sample(space.keys(), random.randint(1,4))
 
         # Clone the space
         trialSpace = dict(space)
@@ -114,7 +114,10 @@ if __name__ == '__main__':
         for l in range(4):
             print('=' * 20)
 
-        if optimizedBest['loss'] < best['loss']:
+        # Only accept the change if its at least 1 point better.
+        # This will prevent meaningless changes that had almost
+        # no impact on the score.
+        if optimizedBest['loss'] < (best['loss'] - 1):
             print("New Best!")
             print("Changing:")
             filteredHyperParameters = {key: value for key, value in best['hyperParameters'].items() if key in keysToOptimize}
@@ -127,7 +130,7 @@ if __name__ == '__main__':
                 hyperParameters[key] = optimizedBest['hyperParameters'][key]
             best = optimizedBest
         else:
-            print("Did not beat existing benchmark.")
+            print("Did not beat existing benchmark by at least 1 point.")
             print("Keeping:")
             filteredHyperParameters = {key: value for key, value in best['hyperParameters'].items() if key in keysToOptimize}
             print(pformat(filteredHyperParameters, width=200), "  Loss: ", best['loss'])
