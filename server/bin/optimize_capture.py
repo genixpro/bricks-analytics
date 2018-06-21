@@ -11,6 +11,7 @@ from hyperopt.mongoexp import MongoTrials
 from ebretail.components.CaptureTest import CaptureTest
 import hyperopt
 import random
+import datetime
 
 
 def usage(argv):
@@ -77,6 +78,8 @@ if __name__ == '__main__':
     experiment = 0
 
     while True:
+        start = datetime.datetime.now()
+
         # Pick two variables to optimize
         keysToOptimize = random.sample(space.keys(), 2)
 
@@ -104,15 +107,23 @@ if __name__ == '__main__':
             print(pformat(filteredHyperParameters), "  Loss: ", result['loss'])
 
         if optimizedBest['loss'] < best['loss']:
-            print ("New Best!")
-            print ("Accepting changed hyper-parameters")
+            print("New Best!")
+            filteredHyperParameters = {key: value for key, value in optimizedBest['hyperParameters'].items() if key in keysToOptimize}
+            print(pformat(filteredHyperParameters), "  Loss: ", optimizedBest['loss'])
+            print("Accepting changed hyper-parameters.")
             for key in keysToOptimize:
                 hyperParameters[key] = optimizedBest['hyperParameters'][key]
-            printResults(optimizedBest, "Current Best")
         else:
             print("Did not beat existing benchmark.")
-            printResults(best, "Current Best")
-            printResults(optimizedBest, "Failed Improvement")
+            filteredHyperParameters = {key: value for key, value in optimizedBest['hyperParameters'].items() if key in keysToOptimize}
+            print(pformat(filteredHyperParameters), "  Loss: ", optimizedBest['loss'])
+            print("Rejected this update.")
+
+        printResults(best, "Current Best")
+
+        end = datetime.datetime.now()
+
+        print("Taken: ", end-start)
 
         experiment += 1
 
