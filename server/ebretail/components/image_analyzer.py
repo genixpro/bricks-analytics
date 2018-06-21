@@ -95,6 +95,47 @@ class ImageAnalyzer:
             'right_foot'
         ]
 
+        self.hyperParameters = {
+            'store_map_tracker_max_age': 5,
+            'store_map_tracker_min_hits': 3,
+            'calibration_point_size': 10, # Our calibration checkboard consists of 10cm squares
+            'foot_height': 10,# 10cm, approximate height of shin off the ground, which is where the detector usually detects
+            'knee_height': 50,# 50cm, approx where knees are,
+            'hip_height': 80, # 80cm where hips are
+            'shoulder_height': 150, # 150cm where shoulders are
+            'eye_height': 165, # 165cm eye level
+            'foot_location_estimate_weight': 10,
+            'knee_location_estimate_weight': 5,
+            'hip_location_estimate_weight': 3,
+            'shoulder_location_estimate_weight': 1,
+            'eye_location_estimate_weight': 1,
+            'store_map_merge_distance': 100, # 100px merge distance
+            'image_tracker_max_age': 3,
+            'image_tracker_feature_vector_update_speed': 0.3,
+            'image_tracker_min_hits': 4,
+            'image_tracker_min_keypoints': 4,
+            'image_tracker_match_score_threshold': 0.2,
+            'image_tracker_feature_vector_threshold': 0.3,
+            'image_tracker_iou_weight': 1.0,
+            'image_tracker_similarity_weight': 1.5,
+            'store_map_tracker_feature_vector_update_speed': 0.3,
+            'store_map_tracker_new_track_min_dist': 300,
+            'store_map_tracker_match_score_threshold': 0.2,
+            'store_map_tracker_feature_vector_threshold': 0.3,
+            'store_map_tracker_euclid_threshold': 200,
+            'store_map_tracker_euclid_mode_similarity_weight': 2.0,
+            'store_map_tracker_euclid_mode_distance_weight': 1.0
+        }
+
+        self.trackingFeatureDim = 128
+
+        self.detectionCache = {
+            'people': {}
+        }
+
+    def setHyperParameters(self, hyperParameters):
+        self.hyperParameters = hyperParameters
+
     def initializeTrackingSession(self):
         trackingCheckpointFilename = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", "lib", "deep-sort", "mars-small128.pb")
         trackingInputName = 'images'
@@ -162,10 +203,11 @@ class ImageAnalyzer:
 
         peopleState = state.get('peopleState', None)
         calibrationDetectionState = state.get('calibrationDetectionState', None)
+        cacheId = metadata.get('cacheId', None)
 
         try:
             # Use the global image analyzer to do all the general purpose detections
-            people, peopleState, debugImage, personImages = self.detectPeople(image, peopleState, debugImage)
+            people, peopleState, debugImage, personImages = self.detectPeople(image, peopleState, debugImage, cacheId)
 
             for person in people:
                 oldDetectionId = person['detectionId']
@@ -207,7 +249,7 @@ class ImageAnalyzer:
         # Add in another dimension
         location = np.array([[location[0]], [location[1]], [1]])
 
-        calibrationPointsSize = 10 # Our calibration checkboard consists of 10cm squares
+        calibrationPointsSize = self.hyperParameters['calibration_point_size']
 
         tempMatrix = np.matmul(np.matmul(scipy.linalg.inv(rotationMatrix), scipy.linalg.inv(cameraMatrix)), location)
 
@@ -320,19 +362,19 @@ class ImageAnalyzer:
 
                     estimates = []
                     if (len(feet) > 0):
-                        estimates.append((10, getStoreLocation(group=feet, height=10)))# 10cm, approximate height of shin off the ground, which is where the
+                        estimates.append((self.hyperParameters['foot_location_estimate_weight'], getStoreLocation(group=feet, height=self.hyperParameters['foot_height'])))
 
                     if (len(knees) > 0):
-                        estimates.append((5, getStoreLocation(group=knees, height=50)))# 50cm, approx where knees are
+                        estimates.append((self.hyperParameters['knee_location_estimate_weight'], getStoreLocation(group=knees, height=self.hyperParameters['knee_height'])))
 
                     if (len(hips) > 0):
-                        estimates.append((3, getStoreLocation(group=hips, height=80)))# 80cm where hips are
+                        estimates.append((self.hyperParameters['hip_location_estimate_weight'], getStoreLocation(group=hips, height=self.hyperParameters['hip_height'])))
 
                     if (len(shoulders) > 0):
-                        estimates.append((1, getStoreLocation(group=shoulders, height=150)))# 150cm where shoulders are
+                        estimates.append((self.hyperParameters['shoulder_location_estimate_weight'], getStoreLocation(group=shoulders, height=self.hyperParameters['shoulder_height'])))
 
                     if (len(head) > 0):
-                        estimates.append((1, getStoreLocation(group=head, height=165)))# 165cm eye level
+                        estimates.append((self.hyperParameters['eye_location_estimate_weight'], getStoreLocation(group=head, height=self.hyperParameters['eye_height'])))
 
                     if len(estimates) > 0:
                         # Now we create a weighted average of the various estimates, giving more weight
@@ -355,14 +397,14 @@ class ImageAnalyzer:
                             "cameraIds": [cameraInfo['cameraId']]
                         })
 
-        # Crude algorithm - merge together any detections from different cameras which are < 50 px from each other
+        # Crude algorithm - merge together any detections from different cameras which are < mergeDistance px from each other
         # TODO: Replace this crude algorithm
 
         didMerge = True
         while didMerge:
             didMerge = False
 
-            mergeDistance = 100
+            mergeDistance = self.hyperParameters['store_map_merge_distance']
             personIndex1 = 0
             personIndex2 = 0
             mergePerson1 = None
@@ -457,7 +499,7 @@ class ImageAnalyzer:
         return data
 
 
-    def detectPeople(self, image, state, debugImage):
+    def detectPeople(self, image, state, debugImage, cacheId=None):
         """
             This method processes the given image, provided as a standard np [width,height,channels] array,
             and extracts the locations of people within it.
@@ -465,13 +507,16 @@ class ImageAnalyzer:
             :param image: The image to be processed
             :param state: The current state of the people detector, from the last image. None if there is no current state.
             :param debugImage: The image upon which debug information can be written
+            :param cacheId: The cacheId for person detections, used for speeding up tests and optimization
             :return: (people, state, debugImage, personImages)
         """
-        if not self.poseSess:
-            self.poseSess, self.poseInputs, self.poseOutputs = predict.setup_pose_prediction(self.cfg)
 
-        if not self.trackingSession:
-            self.initializeTrackingSession()
+        if not (cacheId is not None and cacheId in self.detectionCache['people']):
+            if not self.poseSess:
+                self.poseSess, self.poseInputs, self.poseOutputs = predict.setup_pose_prediction(self.cfg)
+
+            if not self.trackingSession:
+                self.initializeTrackingSession()
 
         if not state:
             state = {
@@ -486,7 +531,16 @@ class ImageAnalyzer:
 
         # Create the tracker if it doesn't exist
         if 'tracker' not in state:
-            state['tracker'] = Sort(max_age=3, min_hits=4.0, featureVectorSize=self.trackingFeatureDim)
+            state['tracker'] = Sort(
+                max_age=self.hyperParameters['image_tracker_max_age'],
+                min_hits=self.hyperParameters['image_tracker_min_hits'],
+                featureVectorSize=self.trackingFeatureDim,
+                feature_vector_update_speed=self.hyperParameters['image_tracker_feature_vector_update_speed'],
+                match_score_threshold=self.hyperParameters['image_tracker_match_score_threshold'],
+                feature_vector_threshold=self.hyperParameters['image_tracker_feature_vector_threshold'],
+                iou_mode_iou_weight=self.hyperParameters['image_tracker_iou_weight'],
+                iou_mode_similarity_weight=self.hyperParameters['image_tracker_similarity_weight'],
+            )
 
         tracker = state['tracker']
 
@@ -496,39 +550,51 @@ class ImageAnalyzer:
         if frameIndex % self.personDetectorFrequency == 0:
             time = datetime.now()
 
-            # Compute prediction with the CNN
-            image_batch = data_to_input(image)
-            outputs_np = self.poseSess.run(self.poseOutputs, feed_dict={self.poseInputs: image_batch})
-            scmap, locref, pairwise_diff = predict.extract_cnn_output(outputs_np, self.cfg, self.dataset.pairwise_stats)
-
-            # Convert the cnn output into the set of detected people
-            detections = extract_detections(self.cfg, scmap, locref, pairwise_diff)
-            unLab, pos_array, unary_array, pwidx_array, pw_array = eval_graph(self.sm, detections)
-            peoplePoints = get_person_conf_multicut(self.sm, unLab, unary_array, pos_array)
-
-            newPeople = []
-
-            # Filter out detections that have less then 4 keypoints ( use * 2 here because there are two dimensions, x and y)
-            peoplePoints = np.array([person for person in peoplePoints if (np.count_nonzero(person) / 2) >= 4])
-
-            # Now feed these detections through the tracker
             detectionBoxes = []
             featureVectors = []
-            for detectedPersonIndex, detectedPerson in enumerate(peoplePoints):
-                # Compute this persons outer bounding box
-                box = self.boundingBoxForPerson(detectedPerson)
+            newPeople = []
+            peoplePoints = []
+            if cacheId is not None and cacheId in self.detectionCache['people']:
+                detectionBoxes = self.detectionCache['people'][cacheId]['detectionBoxes']
+                featureVectors = self.detectionCache['people'][cacheId]['featureVectors']
+                peoplePoints = self.detectionCache['people'][cacheId]['peoplePoints']
+            else:
+                # Compute prediction with the CNN
+                image_batch = data_to_input(image)
+                outputs_np = self.poseSess.run(self.poseOutputs, feed_dict={self.poseInputs: image_batch})
+                scmap, locref, pairwise_diff = predict.extract_cnn_output(outputs_np, self.cfg, self.dataset.pairwise_stats)
 
-                detection = np.array([box['left'], box['top'], box['right'], box['bottom'], 1.0] + [0] * self.trackingFeatureDim)  # the middle entry is the score, which doesn't matter for this trackker. Feature vector after that.
+                # Convert the cnn output into the set of detected people
+                detections = extract_detections(self.cfg, scmap, locref, pairwise_diff)
+                unLab, pos_array, unary_array, pwidx_array, pw_array = eval_graph(self.sm, detections)
+                peoplePoints = get_person_conf_multicut(self.sm, unLab, unary_array, pos_array)
 
-                croppedPerson = self.extractTrackingCrop(image, detection[:4], self.trackingImageShape[:-1])
-                if croppedPerson is not None:
-                    featureVector = self.trackingSession.run(self.trackingOutputVar, feed_dict={self.trackingInputVar: [croppedPerson]})
-                    detection[5:] = featureVector[0]
-                    featureVectors.append(featureVector[0].tolist())
-                else:
-                    featureVectors.append(None)
+                # Filter out detections that have less then 4 keypoints ( use /2 here because there are two dimensions, x and y)
+                peoplePoints = np.array([person for person in peoplePoints if (np.count_nonzero(person) / 2) >= self.hyperParameters['image_tracker_min_keypoints']])
 
-                detectionBoxes.append(detection)
+                # Now feed these detections through the tracker
+                for detectedPersonIndex, detectedPerson in enumerate(peoplePoints):
+                    # Compute this persons outer bounding box
+                    box = self.boundingBoxForPerson(detectedPerson)
+
+                    detection = np.array([box['left'], box['top'], box['right'], box['bottom'], 1.0] + [0] * self.trackingFeatureDim)  # the middle entry is the score, which doesn't matter for this trackker. Feature vector after that.
+
+                    croppedPerson = self.extractTrackingCrop(image, detection[:4], self.trackingImageShape[:-1])
+                    if croppedPerson is not None:
+                        featureVector = self.trackingSession.run(self.trackingOutputVar, feed_dict={self.trackingInputVar: [croppedPerson]})
+                        detection[5:] = featureVector[0]
+                        featureVectors.append(featureVector[0].tolist())
+                    else:
+                        featureVectors.append(None)
+
+                    detectionBoxes.append(detection)
+
+            if cacheId is not None:
+                self.detectionCache['people'][cacheId] = {
+                    'detectionBoxes': detectionBoxes,
+                    'featureVectors': featureVectors,
+                    'peoplePoints': peoplePoints
+                }
 
             for box in detectionBoxes:
                 cv2.rectangle(debugImage, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (0, 0, 255), 3)
@@ -560,7 +626,7 @@ class ImageAnalyzer:
 
             currentPeople = newPeople
 
-            self.draw_multi.draw(debugImage, self.dataset, peoplePoints)
+            # self.draw_multi.draw(debugImage, self.dataset, peoplePoints)
         else:
             for person in currentPeople:
                 box = person['bounding_box']
@@ -653,9 +719,6 @@ class ImageAnalyzer:
         state['people'] = currentPeople
         state['frameIndex'] = frameIndex
 
-        for person in currentPeople:
-            print("Person: ", person['detectionId'])
-
         return currentPeople, state, debugImage, personImages
 
 
@@ -714,7 +777,19 @@ class ImageAnalyzer:
             :return: (timeSeriesFrame, state)
         """
         if 'tracker' not in state:
-            state['tracker'] = Sort(max_age=5, min_hits=3, mode='euclidean', featureVectorSize=128, new_track_min_dist=300)
+            state['tracker'] = Sort(
+                max_age=self.hyperParameters['store_map_tracker_max_age'],
+                min_hits=self.hyperParameters['store_map_tracker_min_hits'],
+                mode='euclidean',
+                featureVectorSize=128,
+                new_track_min_dist=self.hyperParameters['store_map_tracker_new_track_min_dist'],
+                feature_vector_update_speed=self.hyperParameters['store_map_tracker_feature_vector_update_speed'],
+                match_score_threshold=self.hyperParameters['store_map_tracker_match_score_threshold'],
+                feature_vector_threshold=self.hyperParameters['store_map_tracker_feature_vector_threshold'],
+                euclid_threshold=self.hyperParameters['store_map_tracker_euclid_threshold'],
+                euclid_mode_similarity_weight=self.hyperParameters['store_map_tracker_euclid_mode_similarity_weight'],
+                euclid_mode_distance_weight=self.hyperParameters['store_map_tracker_euclid_mode_distance_weight']
+            )
 
         if 'people' not in state:
             state['people'] = {}

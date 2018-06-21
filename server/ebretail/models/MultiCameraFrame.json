@@ -28,7 +28,7 @@
                 "items": {"type":"stirng"}
               },
               "x": {
-                "type": "number"
+                "type": "number"e
               },
               "y": {
                 "type": "number"

@@ -17,6 +17,9 @@ import pika
 import threading
 import io
 from scipy import ndimage
+import scipy.optimize
+import scipy.spatial
+import pickle
 
 def usage(argv):
     cmd = os.path.basename(argv[0])
@@ -31,10 +34,11 @@ class CaptureTest:
     def __init__(self, fileName):
         # Load core test data
         self.testData = json.load(open(fileName, 'r'))
+        self.fileName = fileName
 
         # Load the annotation data
         self.annotations = json.load(
-            open(os.path.join(os.path.dirname(sys.argv[1]), self.testData['annotationsFile']), 'r'))
+            open(os.path.join(os.path.dirname(fileName), self.testData['annotationsFile']), 'r'))
 
         # Load the store map
         self.loadStoreMap()
@@ -103,7 +107,7 @@ class CaptureTest:
 
     def loadStoreMap(self):
         # Now render the results onto a store-map
-        storeMapImagePath = os.path.join(os.path.dirname(sys.argv[1]), 'storemap.png')
+        storeMapImagePath = os.path.join(os.path.dirname(self.fileName), 'storemap.png')
         storeMapImage = Image.open(storeMapImagePath)
         storeMapImage.load()
         storeMapImageArray = numpy.array(storeMapImage.getdata(), numpy.uint8).reshape(storeMapImage.height,
@@ -114,7 +118,7 @@ class CaptureTest:
 
     def loadCalibrationImage(self):
         # Load calibration image
-        calibrationImagePath = os.path.join(os.path.dirname(sys.argv[1]), self.testData['directory'], 'calibration.jpg')
+        calibrationImagePath = os.path.join(os.path.dirname(self.fileName), self.testData['directory'], 'calibration.jpg')
         fullCalibrationImage = Image.open(calibrationImagePath)
         self.calibrationImages = self.breakApartImage(fullCalibrationImage, self.testData['cameras'])
 
@@ -174,8 +178,8 @@ class CaptureTest:
 
                 draw(debugImage, imgpts)
 
-                cv2.imshow('calibration-' + str(cameraIndex), debugImage)
-                cv2.waitKey(1000)
+                # cv2.imshow('calibration-' + str(cameraIndex), debugImage)
+                # cv2.waitKey(1000)
 
             singleCameraConfigurations.append(cameraConfiguration)
 
@@ -220,7 +224,7 @@ class CaptureTest:
         resultDebugImages = []
         resultSingleCameraFrames = []
         for i in range(self.testData['numberOfImages']):
-            imagePath = os.path.join(os.path.dirname(sys.argv[1]), self.testData['directory'],
+            imagePath = os.path.join(os.path.dirname(self.fileName), self.testData['directory'],
                                      'image-' + str(i).zfill(5) + '.jpg')
 
             captureFullImage = Image.open(imagePath)
@@ -248,8 +252,10 @@ class CaptureTest:
                 metadata = {
                     'storeId': 1,
                     'cameraId': self.cameraId(cameraIndex),
-                    'timestamp': (now + datetime.timedelta(seconds=0.5)).strftime("%Y-%m-%dT%H:%M:%S.%f")
+                    'timestamp': (now + datetime.timedelta(seconds=0.5)).strftime("%Y-%m-%dT%H:%M:%S.%f"),
                 }
+
+                metadata['cacheId'] = str(metadata['cameraId']) + "-" + str(i)
 
                 # Use the image analyzer to produce the SingleCameraFrame object for this camera image.
                 # This first step mostly just detects people and detects the calibration object.
@@ -262,8 +268,8 @@ class CaptureTest:
 
                 singleCameraFrames.append(singleCameraFrame)
 
-                cv2.imshow(camera['name'], debugImage)
-                cv2.waitKey(25)
+                # cv2.imshow(camera['name'], debugImage)
+                # cv2.waitKey(1)
 
                 debugImages.append(debugImage)
 
@@ -416,7 +422,7 @@ class CaptureTest:
     def uploadStoreMap(self):
         """ This function uploads a store map to the server."""
 
-        storeMapImagePath = os.path.join(os.path.dirname(sys.argv[1]), 'storemap.png')
+        storeMapImagePath = os.path.join(os.path.dirname(self.fileName), 'storemap.png')
         files = {'image': open(storeMapImagePath, 'rb')}
         r = requests.put(self.storeUrl + "/" + str(self.storeId) + "/store_layout", data=files['image'])
 
@@ -473,7 +479,7 @@ class CaptureTest:
             self.uploadImageToProcessor(image, timeStamp, imageIndex)
 
         for i in range(self.testData['numberOfImages']):
-            imagePath = os.path.join(os.path.dirname(sys.argv[1]), self.testData['directory'],
+            imagePath = os.path.join(os.path.dirname(self.fileName), self.testData['directory'],
                                      'image-' + str(i).zfill(5) + '.jpg')
 
             captureFullImage = Image.open(imagePath)
@@ -497,3 +503,148 @@ class CaptureTest:
                 self.uploadImageToProcessor(numpy.array(image), timeStamp, cameraIndex)
 
             timeStamp = timeStamp + datetime.timedelta(seconds=0.5)
+
+
+    def measureAccuracy(self, timeSeriesFrames):
+        score = 0
+
+        allTags = set()
+        personTags = {}
+
+        allAnnotations = json.loads(json.dumps(self.annotations))
+
+        for frameIndex, timeSeriesFrame in enumerate(timeSeriesFrames):
+            people = timeSeriesFrame['people']
+            annotations = allAnnotations['frames'][str(frameIndex + 1)]
+            for annotation in annotations:
+                tag = annotation['tags'][0]
+                allTags.add(tag)
+
+            for person in people:
+                # Now associate this time series frame to this assignment
+                person['annotation'] = None
+                person['groundTruth'] = None
+                personTags[person['visitorId']] = {}
+
+        for frameIndex, timeSeriesFrame in enumerate(timeSeriesFrames):
+            matrix = []
+
+            people = timeSeriesFrame['people']
+            annotations = allAnnotations['frames'][str(frameIndex + 1)]
+
+            # Create a cost matrix to perform linear assignment between detections and ground truth data
+            for person in people:
+                distances = []
+
+                for annotation in annotations:
+                    annotationPoint = [
+                        (annotation['x1'] / 2 + annotation['x2'] / 2) * self.annotationWidthAdjust -
+                        self.testData['storeMap']['x'],
+                        (annotation['y1'] / 2 + annotation['y2'] / 2) * self.annotationHeightAdjust -
+                        self.testData['storeMap']['y'],
+                    ]
+
+                    personPoint = [
+                        person['x'],
+                        person['y']
+                    ]
+
+                    distance = scipy.spatial.distance.euclidean(annotationPoint, personPoint)
+
+                    distances.append(distance)
+
+                # Compute distance between this person and each of the ground truth points
+                matrix.append(distances)
+
+            if len(matrix) == 0:
+                assignments = [[], []]
+            else:
+                assignments = scipy.optimize.linear_sum_assignment(numpy.array(matrix))
+
+            for assignmentIndex in range(len(assignments[0])):
+                personIndex = assignments[0][assignmentIndex]
+                annotationIndex = assignments[1][assignmentIndex]
+
+                person = people[personIndex]
+                annotation = annotations[annotationIndex]
+                tag = annotation['tags'][0]
+
+                if person['visitorId'] in personTags:
+                    if tag in personTags[person['visitorId']]:
+                        personTags[person['visitorId']][tag] += 1
+                    else:
+                        personTags[person['visitorId']][tag] = 1
+                else:
+                    personTags[person['visitorId']] = {tag: 1}
+
+                # Now associate this time series frame to this assignment
+                person['annotation'] = annotation
+                person['groundTruth'] = tag
+                person['groundTruthDistance'] = matrix[personIndex][annotationIndex]
+
+        # Now having processed all of the frames, we only find the dominant ground truth track that each visitorId
+        # was associated with. We eliminate the others, since a track can only be for one person
+        for frameIndex, timeSeriesFrame in enumerate(timeSeriesFrames):
+            people = timeSeriesFrame['people']
+            annotations = allAnnotations['frames'][str(frameIndex + 1)]
+            for person in people:
+                if person['visitorId'] in personTags and len(personTags[person['visitorId']]) > 0:
+                    # Determine the dominant ground truth for this person
+                    bestGroundTruth = max(*personTags[person['visitorId']].keys(), key=lambda tag: personTags[person['visitorId']][tag] if tag in personTags[person['visitorId']] else 0)
+                else:
+                    bestGroundTruth = None
+
+                if person['groundTruth'] != bestGroundTruth:
+                    person['groundTruth'] = None
+                elif person['groundTruth'] is not None:
+                    person['annotation']['visitorId'] = person['visitorId']
+
+        # Now we add up all the distances as score, and all the extras as punishment
+        falsePositiveCostEach = 1000
+        falseNegativeCostEach = 1000
+        falsePositiveCostTotal = 0
+        falseNegativeCostTotal = 0
+        distanceCostTotal = 0
+        for frameIndex, timeSeriesFrame in enumerate(timeSeriesFrames):
+            people = timeSeriesFrame['people']
+            annotations = allAnnotations['frames'][str(frameIndex + 1)]
+            for person in people:
+                if person['groundTruth'] is None:
+                    # Punishment - this person should have had ground truth associated with them
+                    score += falsePositiveCostEach
+                    falsePositiveCostTotal += falsePositiveCostEach
+                else:
+                    score += person['groundTruthDistance']
+                    distanceCostTotal += person['groundTruthDistance']
+            for annotation in annotations:
+                if 'visitorId' not in annotation or annotation['visitorId'] is None:
+                    # Punishment - this ground truth should have had a track associated with it
+                    score += falseNegativeCostEach
+                    falseNegativeCostTotal += falseNegativeCostEach
+
+        # Lastly, punish every detected person over and above the number of known tags
+        extraTracksCostTotal = max(0, len(personTags) - len(allTags)) * falseNegativeCostEach
+        score += extraTracksCostTotal
+
+        details = {
+            "falsePositiveCost": falsePositiveCostTotal / len(timeSeriesFrames),
+            "falseNegativeCostTotal": falseNegativeCostTotal / len(timeSeriesFrames),
+            "distanceCostTotal": distanceCostTotal / len(timeSeriesFrames),
+            "extraTracksCostTotal": extraTracksCostTotal / len(timeSeriesFrames),
+        }
+
+        # Average for each frame
+        score = score / len(timeSeriesFrames)
+
+        return score, details
+
+    def setHyperParameters(self, hyperParameters):
+        # Set the hyper parameters on the image analyzer
+        self.imageAnalyzer.setHyperParameters(hyperParameters)
+
+    def reloadDetectionCache(self, cacheFile):
+        if os.path.exists(cacheFile):
+            self.imageAnalyzer.detectionCache = pickle.load(open(cacheFile, 'rb'))
+
+    def saveDetectionCache(self, cacheFile):
+        pickle.dump(self.imageAnalyzer.detectionCache, open(cacheFile, 'wb'))

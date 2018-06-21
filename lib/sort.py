@@ -137,7 +137,7 @@ class KalmanBoxTracker(object):
     """
     return convert_x_to_bbox(self.kf.x)
 
-def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0.2, feature_vector_threshold = 0.3, euclid_threshold = 200):
+def associate_detections_to_trackers(detections,trackers,mode, match_score_threshold = 0.2, feature_vector_threshold = 0.3, euclid_threshold = 200, iou_mode_iou_weight=1.0, iou_mode_similarity_weight=1.5, euclid_mode_similarity_weight=2.0, euclid_mode_distance_weight=1.0):
   """
   Assigns detections to tracked object (both represented as bounding boxes)
 
@@ -160,7 +160,7 @@ def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0
           similarityMetric = 0.0
         iou_metric = iou(det,trk)
 
-        finalMetric = iou_metric + similarityMetric*1.5
+        finalMetric = iou_metric * iou_mode_iou_weight + similarityMetric*iou_mode_similarity_weight
 
         iou_matrix[d, t] = finalMetric
       elif mode == 'euclidean':
@@ -174,7 +174,7 @@ def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0
 
         distMetric = scipy.special.expit(dist / (euclid_threshold / 2))
 
-        iou_matrix[d,t] = similarityMetric * 2.0 - distMetric
+        iou_matrix[d,t] = similarityMetric * euclid_mode_similarity_weight - distMetric * euclid_mode_distance_weight
 
   matched_indices = linear_assignment(-iou_matrix)
 
@@ -190,7 +190,7 @@ def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0
   #filter out matched with low IOU
   matches = []
   for m in matched_indices:
-    if(iou_matrix[m[0],m[1]]<iou_threshold):
+    if(iou_matrix[m[0],m[1]]<match_score_threshold):
       unmatched_detections.append(m[0])
       unmatched_trackers.append(m[1])
     else:
@@ -206,7 +206,7 @@ def associate_detections_to_trackers(detections,trackers,mode, iou_threshold = 0
 
 
 class Sort(object):
-  def __init__(self,max_age=1,min_hits=3, featureVectorSize = 0, mode='iou', new_track_min_dist=0):
+  def __init__(self,max_age=1,min_hits=3, featureVectorSize = 0, mode='iou', new_track_min_dist=0, feature_vector_update_speed=0.3, match_score_threshold=0.2, feature_vector_threshold=0.3, euclid_threshold=200, iou_mode_iou_weight=1.0, iou_mode_similarity_weight=1.5, euclid_mode_similarity_weight=2.0, euclid_mode_distance_weight=1.0):
     """
     Sets key parameters for SORT
     """
@@ -217,6 +217,14 @@ class Sort(object):
     self.mode = mode
     self.featureVectorSize = featureVectorSize
     self.new_track_min_dist = new_track_min_dist
+    self.feature_vector_update_speed = feature_vector_update_speed
+    self.match_score_threshold = match_score_threshold
+    self.feature_vector_threshold = feature_vector_threshold
+    self.euclid_threshold = euclid_threshold
+    self.iou_mode_iou_weight=iou_mode_iou_weight
+    self.iou_mode_similarity_weight = iou_mode_similarity_weight
+    self.euclid_mode_similarity_weight = euclid_mode_similarity_weight
+    self.euclid_mode_distance_weight = euclid_mode_distance_weight
 
   def update(self,dets):
     """
@@ -242,7 +250,16 @@ class Sort(object):
     trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
     for t in reversed(to_del):
       self.trackers.pop(t)
-    matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(dets,trks, self.mode)
+    matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(detections=dets,
+                                                                               trackers=trks,
+                                                                               mode=self.mode,
+                                                                               match_score_threshold=self.match_score_threshold,
+                                                                               feature_vector_threshold=self.feature_vector_threshold,
+                                                                               euclid_threshold=self.euclid_threshold,
+                                                                               iou_mode_iou_weight=self.iou_mode_iou_weight,
+                                                                               iou_mode_similarity_weight=self.iou_mode_similarity_weight,
+                                                                               euclid_mode_similarity_weight=self.euclid_mode_similarity_weight,
+                                                                               euclid_mode_distance_weight=self.euclid_mode_distance_weight)
     # print(matched, unmatched_dets, unmatched_trks)
 
     # Set all trackers detIndex to 0
@@ -261,7 +278,7 @@ class Sort(object):
         # can screw up the feature vector, even if they are tracked well
         newFeatureVector = dets[d,:][0][5:]
         if np.count_nonzero(newFeatureVector) > 0:
-          trk.featureVector = (trk.featureVector * 0.7) + (newFeatureVector * 0.3)
+          trk.featureVector = (trk.featureVector * (1.0 - self.feature_vector_update_speed)) + (newFeatureVector * self.feature_vector_update_speed)
 
     #create and initialise new trackers for unmatched detections
     for i in unmatched_dets:

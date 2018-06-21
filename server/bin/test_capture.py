@@ -40,7 +40,7 @@ if __name__ == '__main__':
     cacheFileName = sys.argv[1] + "-cached.json"
     if os.path.exists(cacheFileName) and useCache:
         resultSingleCameraFrames = json.load(open(cacheFileName, 'r'))
-        resultDebugImages = [[] for fame in range(test.testData['numberOfImages'])]
+        resultDebugImages = [[] for frame in range(test.testData['numberOfImages'])]
     else:
         # Process each of the main sequence images
         resultSingleCameraFrames, resultDebugImages = test.createSingleCameraFrames()
@@ -57,6 +57,13 @@ if __name__ == '__main__':
     storeMapDebugImages = test.drawStoreMapResults(multiCameraFrames, timeSeriesFrames)
     for frameIndex in range(len(multiCameraFrames)):
         resultDebugImages[frameIndex].append(storeMapDebugImages[frameIndex])
+
+    score = test.measureAccuracy(timeSeriesFrames)
+    for i in range(3):
+        print('=' * 30)
+    print ('Score', score)
+    for i in range(3):
+        print('=' * 30)
 
     for i in range(test.testData['numberOfImages']):
         debugImages = resultDebugImages[i]
