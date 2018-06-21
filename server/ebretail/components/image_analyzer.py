@@ -115,6 +115,7 @@ class ImageAnalyzer:
         from multiperson.predict import SpatialModel
         from dataset.factory import create as create_dataset
         from config import load_config
+        from nnet import predict
         import tensorflow as tf
 
         # Configure the pose detection model
@@ -140,6 +141,8 @@ class ImageAnalyzer:
         self.trackingOutputVar = tf.get_default_graph().get_tensor_by_name("net/%s:0" % trackingOutputName)
         self.trackingFeatureDim = self.trackingOutputVar.get_shape().as_list()[-1]
         self.trackingImageShape = self.trackingInputVar.get_shape().as_list()[1:]
+
+        self.poseSess, self.poseInputs, self.poseOutputs = predict.setup_pose_prediction(self.cfg)
 
     def extractTrackingCrop(self, image, bbox, crop_shape, padding=50):
         """Extract image patch for a given bounding box, to be used in creating the tracking sort metric.
@@ -501,14 +504,6 @@ class ImageAnalyzer:
         """
 
         if not (cacheId is not None and cacheId in self.detectionCache['people']):
-            if not self.poseSess:
-                # Only make these imports if we have to
-                from multiperson.predict import eval_graph, get_person_conf_multicut
-                from multiperson.detections import extract_detections
-                from dataset.pose_dataset import data_to_input
-                from nnet import predict
-
-                self.poseSess, self.poseInputs, self.poseOutputs = predict.setup_pose_prediction(self.cfg)
             if not self.trackingSession:
                 self.initializeTrackingSession()
         if not state:
@@ -552,6 +547,12 @@ class ImageAnalyzer:
                 featureVectors = self.detectionCache['people'][cacheId]['featureVectors']
                 peoplePoints = self.detectionCache['people'][cacheId]['peoplePoints']
             else:
+                # Only make these imports if we have to
+                from multiperson.predict import eval_graph, get_person_conf_multicut
+                from multiperson.detections import extract_detections
+                from dataset.pose_dataset import data_to_input
+                from nnet import predict
+
                 # Compute prediction with the CNN
                 image_batch = data_to_input(image)
                 outputs_np = self.poseSess.run(self.poseOutputs, feed_dict={self.poseInputs: image_batch})
