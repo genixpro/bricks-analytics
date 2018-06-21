@@ -5,7 +5,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
 import json
 
-from pprint import pprint
+from pprint import pprint, pformat
 import ebretail.components.optimization
 from hyperopt.mongoexp import MongoTrials
 from ebretail.components.CaptureTest import CaptureTest
@@ -31,11 +31,11 @@ if __name__ == '__main__':
             'hip_height': hyperopt.hp.quniform('hip_height', 50, 100, 5),
             'shoulder_height': hyperopt.hp.quniform('shoulder_height', 120, 180, 5),
             'eye_height': hyperopt.hp.quniform('eye_height', 120, 180, 5),
-            'foot_location_estimate_weight': hyperopt.hp.quniform('foot_location_estimate_weight', 1, 100, 1),
-            'knee_location_estimate_weight': hyperopt.hp.quniform('knee_location_estimate_weight', 1, 100, 1),
-            'hip_location_estimate_weight': hyperopt.hp.quniform('hip_location_estimate_weight', 1, 100, 1),
-            'shoulder_location_estimate_weight': hyperopt.hp.quniform('shoulder_location_estimate_weight', 1, 100, 1),
-            'eye_location_estimate_weight': hyperopt.hp.quniform('eye_location_estimate_weight', 1, 100, 1),
+            'foot_location_estimate_weight': hyperopt.hp.quniform('foot_location_estimate_weight', 1, 10, 1),
+            'knee_location_estimate_weight': hyperopt.hp.quniform('knee_location_estimate_weight', 1, 10, 1),
+            'hip_location_estimate_weight': hyperopt.hp.quniform('hip_location_estimate_weight', 1, 10, 1),
+            'shoulder_location_estimate_weight': hyperopt.hp.quniform('shoulder_location_estimate_weight', 1, 10, 1),
+            'eye_location_estimate_weight': hyperopt.hp.quniform('eye_location_estimate_weight', 1, 10, 1),
             'store_map_merge_distance': hyperopt.hp.quniform('store_map_merge_distance', 0, 300, 25),
             'image_tracker_max_age': hyperopt.hp.quniform('image_tracker_max_age', 0, 10, 1),
             'image_tracker_feature_vector_update_speed': hyperopt.hp.uniform('image_tracker_feature_vector_update_speed', 0, 1),
@@ -94,9 +94,14 @@ if __name__ == '__main__':
         hyperopt.fmin(fn=ebretail.components.optimization.computeAccuracy,
                     space=trialSpace,
                     algo=hyperopt.tpe.suggest,
-                    max_evals=10,
+                    max_evals=25,
                     trials=trials)
         optimizedBest = min(*trials.results, key=lambda result: result['loss'])
+
+        print("Tested:")
+        for result in trials.results:
+            filteredHyperParameters = {key: value for key, value in result['hyperParameters'].items() if key in keysToOptimize}
+            print(pformat(filteredHyperParameters), "  Loss: ", result['loss'])
 
         if optimizedBest['loss'] < best['loss']:
             print ("New Best!")
