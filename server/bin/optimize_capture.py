@@ -113,7 +113,7 @@ if __name__ == '__main__':
             print("New Best!")
             print("Changing:")
             filteredHyperParameters = {key: value for key, value in best['hyperParameters'].items() if key in keysToOptimize}
-            print(pformat(filteredHyperParameters, width=200), "  Loss: ", optimizedBest['loss'])
+            print(pformat(filteredHyperParameters, width=200), "  Loss: ", best['loss'])
             print("To:")
             filteredHyperParameters = {key: value for key, value in optimizedBest['hyperParameters'].items() if key in keysToOptimize}
             print(pformat(filteredHyperParameters, width=200), "  Loss: ", optimizedBest['loss'])
