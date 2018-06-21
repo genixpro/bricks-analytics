@@ -73,6 +73,8 @@ class ImageAnalyzer:
         self.trackerMaxAverageDist = 50
 
         self.poseSess = None
+        
+        self.validationEnabled = True
 
         # We need to double check all of the indexes - some of these might not actually be correlated with the correct body parts
         self.keypointNames = [
@@ -133,6 +135,9 @@ class ImageAnalyzer:
             'people': {},
             'calibrationObjects': {}
         }
+
+    def disableValidation(self):
+        self.validationEnabled = False
 
     def setHyperParameters(self, hyperParameters):
         self.hyperParameters = hyperParameters
@@ -217,7 +222,7 @@ class ImageAnalyzer:
                     personImages[person['detectionId']] = personImages[oldDetectionId]
                     del personImages[oldDetectionId]
 
-            calibrationObject, calibrationDetectionState, debugImage = self.detectCalibrationObject(image, calibrationDetectionState, debugImage)
+            calibrationObject, calibrationDetectionState, debugImage = self.detectCalibrationObject(image, calibrationDetectionState, debugImage, cacheId)
         except Exception as e:
             # Reset the state if something went wrong.
             peopleState = None
@@ -239,7 +244,8 @@ class ImageAnalyzer:
             "calibrationObject": calibrationObject
         }
 
-        validateSingleCameraFrame(singleCameraFrame)
+        if self.validationEnabled:
+            validateSingleCameraFrame(singleCameraFrame)
 
         return (singleCameraFrame, state, personImages)
 

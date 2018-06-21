@@ -16,7 +16,8 @@ def computeAccuracy_impl(hyperParameters):
 
     test = CaptureTest(testFile)
 
-    test.loadStoreMap()
+    # Disable validation to improve performance
+    test.imageAnalyzer.disableValidation()
 
     # Load calibration image
     test.loadCalibrationImage()
@@ -62,11 +63,20 @@ def computeAccuracy_impl(hyperParameters):
 
 def computeAccuracy(hyperParameters):
     return computeAccuracy_impl(hyperParameters)
-
+#
 #     script = """
 # import ebretail.components.optimization
 # import json
 # ebretail.components.optimization.computeAccuracy_impl(json.loads(\"\"\"""" + json.dumps(hyperParameters) + """\"\"\"))
 # """
 #
-#     cProfile.run(compile(script, "test.py", 'exec'), sort='cumulative')
+#     cProfile.run(compile(script, "test.py", 'exec'), 'restats', sort='cumulative')
+#
+#     import pstats
+#     p = pstats.Stats('restats')
+#     p.strip_dirs().sort_stats(-1).print_stats()
+#
+#     p.sort_stats('cumulative').print_callers(25)
+#
+#
+#

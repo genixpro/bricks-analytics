@@ -40,8 +40,8 @@ class CaptureTest:
         self.annotations = json.load(
             open(os.path.join(os.path.dirname(fileName), self.testData['annotationsFile']), 'r'))
 
-        # Load the store map
-        self.loadStoreMap()
+        # Set the store map to None
+        self.storeMap = None
 
         # Create the image analyzer instance.
         self.imageAnalyzer = ImageAnalyzer.sharedInstance()
@@ -75,6 +75,9 @@ class CaptureTest:
         return cameraImages
 
     def drawDebugStoreMap(self, points, textScale=0.5, boxSize=50):
+        if self.storeMap is None:
+            self.loadStoreMap()
+
         frameMap = self.storeMap.copy()
 
         for pointIndex, point in enumerate(points):
@@ -117,14 +120,31 @@ class CaptureTest:
         self.storeMap = storeMapImageArray
 
     def loadCalibrationImage(self):
-        # Load calibration image
-        calibrationImagePath = os.path.join(os.path.dirname(self.fileName), self.testData['directory'], 'calibration.jpg')
-        fullCalibrationImage = Image.open(calibrationImagePath)
-        self.calibrationImages = self.breakApartImage(fullCalibrationImage, self.testData['cameras'])
+        calibrationCacheFile = os.path.join(os.path.dirname(self.fileName), os.path.basename(self.fileName).split('.')[0] + '-calibration.pickle')
 
-        self.annotationWidthAdjust = fullCalibrationImage.width / self.annotations['frames']["0"][0]["width"]
-        self.annotationHeightAdjust = (fullCalibrationImage.height + self.testData['storeMap']['height']) / \
-                                      self.annotations['frames']["0"][0]["height"]
+        if os.path.exists(calibrationCacheFile):
+            data = pickle.load(open(calibrationCacheFile, 'rb'))
+
+            self.calibrationImages = data['calibrationImages']
+            self.annotationWidthAdjust = data['annotationWidthAdjust']
+            self.annotationHeightAdjust = data['annotationHeightAdjust']
+        else:
+            # Load calibration image
+            calibrationImagePath = os.path.join(os.path.dirname(self.fileName), self.testData['directory'], 'calibration.jpg')
+            fullCalibrationImage = Image.open(calibrationImagePath)
+            self.calibrationImages = self.breakApartImage(fullCalibrationImage, self.testData['cameras'])
+
+            self.annotationWidthAdjust = fullCalibrationImage.width / self.annotations['frames']["0"][0]["width"]
+            self.annotationHeightAdjust = (fullCalibrationImage.height + self.testData['storeMap']['height']) / \
+                                          self.annotations['frames']["0"][0]["height"]
+
+            data = {
+                "calibrationImages": self.calibrationImages,
+                "annotationWidthAdjust": self.annotationWidthAdjust,
+                "annotationHeightAdjust": self.annotationHeightAdjust
+            }
+
+            pickle.dump(data, open(calibrationCacheFile, 'wb'))
 
     def createCameraConfigurations(self, showDebug=False):
         # Detect the calibration object for each camera, and generate its configuration object
