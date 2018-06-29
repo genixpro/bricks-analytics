@@ -94,9 +94,11 @@ class VisitSummarizer:
             # Compute the time between the next entry and this one
             elapsed = (datetime.strptime(nextPoint['timestamp'], "%Y-%m-%dT%H:%M:%S.%f") - datetime.strptime(currentPoint['timestamp'], "%Y-%m-%dT%H:%M:%S.%f")).total_seconds()
 
-            # Allocate half the time to the current zone, half the time to the next zone
-            zoneMap[str(currentPoint['zoneId'])]['timeSpentSeconds'] += elapsed/2
-            zoneMap[str(nextPoint['zoneId'])]['timeSpentSeconds'] += elapsed/2
+            if currentPoint['zoneId'] and str(currentPoint['zoneId']) in zoneMap:
+                # Allocate half the time to the current zone, half the time to the next zone
+                zoneMap[str(currentPoint['zoneId'])]['timeSpentSeconds'] += elapsed/2
+            if nextPoint['zoneId'] and str(nextPoint['zoneId']) in zoneMap:
+                zoneMap[str(nextPoint['zoneId'])]['timeSpentSeconds'] += elapsed/2
 
         # Now compute the percentage time in each zone
         maxZonePercent = 0

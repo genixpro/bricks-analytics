@@ -57,7 +57,7 @@ class CaptureTest:
         self.storeId = None
         self.collectorId = 'collector-1'
 
-        self.amqpThread = threading.Thread(target=lambda: self.amqpConnectionThread())
+        self.amqpThread = threading.Thread(target=lambda: self.amqpConnectionThread(), daemon=True)
 
     def breakApartImage(self, captureFullImage, cameras):
         """Break it apart into separate images for each camera"""

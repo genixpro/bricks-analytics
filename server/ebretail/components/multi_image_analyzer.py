@@ -26,7 +26,7 @@ class MultiImageAnalyzer:
         # Admitably this is a bit of a hack the getMessagingChannel thing
         self.getMessagingChannel = getMessagingChannel
         self.scheduler = sched.scheduler()
-        self.schedulerThread = threading.Thread(target=lambda: self.runSchedulerThread())
+        self.schedulerThread = threading.Thread(target=lambda: self.runSchedulerThread(), daemon=True)
         self.scheduledFrames = {}
         self.frameExecutor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
 

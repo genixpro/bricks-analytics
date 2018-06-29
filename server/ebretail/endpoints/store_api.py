@@ -233,8 +233,6 @@ class DetectionImage(object):
         storeId = int(self.request.matchdict['storeId'])
         detectionId = self.request.matchdict['detectionId']
 
-        print(detectionId)
-
         if self.detectionImages.exists(detectionId):
             self.detectionImages.delete(detectionId)
 

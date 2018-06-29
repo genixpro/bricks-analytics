@@ -29,7 +29,7 @@ def record(request):
     }
 
     amqpChannel = request.registry.getMessagingChannel()
-    print(request.matchdict['cameraId'])
+    # print(request.matchdict['cameraId'])
     amqpChannel.basic_publish(exchange=request.matchdict['cameraId'], routing_key='', body=json.dumps(message))
 
     return Response(status=200)

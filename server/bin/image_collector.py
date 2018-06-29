@@ -6,4 +6,4 @@ from ebretail.components.image_collector import ImageCollector
 
 collector = ImageCollector()
 
-collector.runLocalCapture()
+collector.runCollector()

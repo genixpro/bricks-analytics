@@ -138,6 +138,8 @@ class ImageAnalyzer:
             'calibrationObjects': {}
         }
 
+        # self.initializeTrackingSession()
+
     def disableValidation(self):
         self.validationEnabled = False
 
@@ -831,6 +833,9 @@ class ImageAnalyzer:
         if 'people' not in state:
             state['people'] = {}
 
+        if 'zones' not in storeConfiguration:
+            storeConfiguration['zones'] = []
+
         trackerBoxSize = 500
 
         tracker = state['tracker']
@@ -852,7 +857,7 @@ class ImageAnalyzer:
                     # This is the correct zone.
                     # If this is not an entry zone,
                     # we don't allow the track to appear or disappear
-                    if zone['zoneType'] != 'entry':
+                    if 'zoneType' in zone and zone['zoneType'] != 'entry':
                         allowTrackCreationDeletion = False
                     break
 
@@ -864,6 +869,7 @@ class ImageAnalyzer:
                             float(allowTrackCreationDeletion)
                         ] + featureVector[personIndex]
             detections.append(detection)
+            break
 
         tracked = tracker.update(np.array(detections))
 
@@ -920,6 +926,8 @@ class ImageAnalyzer:
                 timeSeriesFrame['people'].append(person)
 
         timeSeriesFrame['visitorIds'] = [person['visitorId'] for person in timeSeriesFrame['people']]
+
+        pprint(timeSeriesFrame)
 
         return timeSeriesFrame, state
 
