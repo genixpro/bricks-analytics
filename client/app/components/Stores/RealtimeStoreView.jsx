@@ -1,7 +1,7 @@
 import React from 'react';
 import axios from 'axios';
 import {withRouter} from "react-router-dom";
-import { Grid, Row, Col, Panel, Button, FormControl, FormGroup, InputGroup, DropdownButton, MenuItem, Tab, Tabs, Nav, NavItem } from 'react-bootstrap';
+import { Grid, Row, Col, Panel, Button, FormControl, FormGroup, InputGroup, DropdownButton, MenuItem, Tab, Tabs, Nav, Popover } from 'react-bootstrap';
 import ZoneEditor from './ZoneEditor';
 import _ from 'underscore';
 import Transition from 'react-transition-group/Transition';
@@ -11,7 +11,9 @@ class RealtimeStoreView extends React.Component {
     constructor(props) {
         super(props);
 
-        this.state = {};
+        this.state = {
+            selectedPerson: null
+        };
     }
 
     componentDidMount()
@@ -49,6 +51,13 @@ class RealtimeStoreView extends React.Component {
 
             this.setState(newState);
         }, headers);
+    }
+
+
+
+    personClicked(person)
+    {
+        this.setState({selectedPerson: person});
     }
 
 
@@ -91,7 +100,9 @@ class RealtimeStoreView extends React.Component {
                             "top": "calc(" + (person["y"] * 100) + "% - 30px)",
                             "opacity": 0,
                             "transition": `left ${transitionDuration}ms ease-in-out, top ${transitionDuration}ms ease-in-out, opacity ${transitionDuration}ms ease-in-out`
-                        }, fading ? personExitTransitionStyles[state] : personEnterTransitionStyles[state])}>
+                        }, fading ? personExitTransitionStyles[state] : personEnterTransitionStyles[state])}
+                        onClick={this.personClicked.bind(this, person)}
+                    >
                         <div className={"person-image-wrapper"}>
                             <img className="person-image"
                                  src='/img/person.png'
@@ -100,6 +111,23 @@ class RealtimeStoreView extends React.Component {
                         <div className={"visitor-id-block"}>
                             <span>{person.visitorId}</span>
                         </div>
+                        {
+                            this.state.selectedPerson && (person.visitorId === this.state.selectedPerson.visitorId) ?
+                                <Popover
+                                    id="person-popover"
+                                    placement="right"
+                                    positionLeft="100%"
+                                    positionTop="0%"
+                                    title={"Person " + person.visitorId + " Details"}
+                                >
+                                    <p>Detections:</p>
+                                    {
+                                        person.detectionIds.map((cameraId) => (<span>{cameraId}</span>))
+                                    }
+                                    <p>Zone: {person.zone}</p>
+                                </Popover>
+                                : null
+                        }
                     </div>
                 )}
             </Transition>;
