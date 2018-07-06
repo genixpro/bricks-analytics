@@ -30,7 +30,7 @@ class ImageAnalyzer:
         This class is meant to handle just that core image processing piece.
     """
 
-    def __init__(self):
+    def __init__(self, initializeTracking = False):
         self.trackingSession = None
 
         # How frequent does the person detector run
@@ -138,7 +138,8 @@ class ImageAnalyzer:
             'calibrationObjects': {}
         }
 
-        # self.initializeTrackingSession()
+        if initializeTracking:
+            self.initializeTrackingSession()
 
     def disableValidation(self):
         self.validationEnabled = False
@@ -1060,13 +1061,13 @@ class ImageAnalyzer:
         return cameraImage
 
     @staticmethod
-    def sharedInstance():
+    def sharedInstance(initializeTracking = False):
         global globalSharedInstance
         global globalSharedInstanceLock
         with globalSharedInstanceLock:
             if globalSharedInstance is not None:
                 return globalSharedInstance
             else:
-                globalSharedInstance = ImageAnalyzer()
+                globalSharedInstance = ImageAnalyzer(initializeTracking = initializeTracking)
                 return globalSharedInstance
 
