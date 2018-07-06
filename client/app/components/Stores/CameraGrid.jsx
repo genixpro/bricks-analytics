@@ -22,7 +22,7 @@ class CameraGrid extends React.Component {
     /**
      * This function forces reload on all of the camera images
      */
-    reloadCameraImage()
+    reloadCameraImages()
     {
         // Reload the camera image by changing the cache-buster query
         this.setState({cameraImageCacheBuster: Date.now()});
@@ -33,11 +33,8 @@ class CameraGrid extends React.Component {
      */
     componentDidMount()
     {
-        if (this.camera)
-        {
-            this.reloadCameraImage();
-            this.updateInterval = setInterval(() => this.reloadCameraImage(), 2500);
-        }
+        this.reloadCameraImages();
+        this.updateInterval = setInterval(() => this.reloadCameraImages(), 2500);
     }
 
 
@@ -68,9 +65,7 @@ class CameraGrid extends React.Component {
 
                                     <div className="panel-body">
                                         {
-                                            this.state.showCalibrationGrid
-                                                ? <img id='live-image' className="live-image" src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/cameras/" + camera.cameraId + "/calibration?" + this.state.cameraImageCacheBuster} />
-                                                : <img id='live-image' className="live-image" src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/cameras/" + camera.cameraId + "/image?" + this.state.cameraImageCacheBuster} />
+                                                <img id='live-image' className="live-image" src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/cameras/" + camera.cameraId + "/image?" + this.state.cameraImageCacheBuster} />
                                         }
                                     </div>
                                 </div>
