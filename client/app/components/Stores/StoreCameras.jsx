@@ -313,7 +313,7 @@ class StoreCameras extends React.Component {
             <div className="store-cameras">
                 <br/>
                 <Row>
-                    <Col md={3}>
+                    <Col md={2}>
                         <div className="panel b">
                             <div className="panel-body">
                                 <strong className="text-muted">Cameras</strong>
@@ -332,7 +332,7 @@ class StoreCameras extends React.Component {
                         </div>
                     </Col>
                     {this.camera &&
-                    <Col md={9}>
+                    <Col md={10}>
                         <div className="row">
                             <div className="panel b">
                                 <div className="panel-heading">
@@ -370,7 +370,7 @@ class StoreCameras extends React.Component {
                             </div>
                         </div>
                         <div className="row">
-                            <Col md={9}>
+                            <Col md={4}>
                                 <div className="panel b">
                                     <div className="panel-heading">
                                         <h4 className="m0">Live Feed</h4>
@@ -382,24 +382,7 @@ class StoreCameras extends React.Component {
                                                 ? <img id='live-image' className="live-image" src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/cameras/" + this.camera.cameraId + "/calibration?" + this.state.cameraImageCacheBuster} />
                                                 : <img id='live-image' className="live-image" src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/cameras/" + this.camera.cameraId + "/image?" + this.state.cameraImageCacheBuster} />
                                         }
-                                    </div>
-                                </div>
-                            </Col>
-                            <Col md={3}>
-                                <div className="panel b">
-                                    <div className="panel-heading">
-                                        <h4 className="m0">Show</h4>
-                                    </div>
-                                    <div className="panel-body">
                                         <Checkbox title={"Show Calibration Grid"} checked={this.state.showCalibrationGrid} onChange={this.showCalibrationGridChanged.bind(this)}>Show Calibration Grid</Checkbox>
-                                    </div>
-                                </div>
-
-                                <div className="panel b">
-                                    <div className="panel-heading">
-                                        <h4 className="m0">Calibration</h4>
-                                    </div>
-                                    <div className="panel-body">
                                         {this.state.cameraFrame ?
                                             this.state.cameraFrame.calibrationObject ?
                                                 <div>
@@ -413,78 +396,80 @@ class StoreCameras extends React.Component {
                                             :
                                             <div>Loading calibration data...</div>
                                         }
+
                                     </div>
                                 </div>
                             </Col>
-                        </div>
+                            <Col md={8}>
+                                <div className="panel b" id="store-layout">
+                                    <div className="panel-heading">
+                                        <h4 className="m0">Location</h4>
+                                    </div>
 
-                        <div className="panel b" id="store-layout">
-                            <div className="panel-heading">
-                                <h4 className="m0">Location</h4>
-                            </div>
+                                    <div className="panel-body">
+                                        {this.props.showUpdateSuccess &&
+                                        <Alert bsStyle="success">
+                                            <p>Successfully updated the camera location.</p>
+                                        </Alert>
+                                        }
 
-                            <div className="panel-body">
-                                {this.props.showUpdateSuccess &&
-                                    <Alert bsStyle="success">
-                                        <p>Successfully updated the camera location.</p>
-                                    </Alert>
-                                }
+                                        {this.props.showUpdateFailure &&
+                                        <Alert bsStyle="danger">
+                                            <p>Failed to update the camera location.</p>
+                                        </Alert>
+                                        }
 
-                                {this.props.showUpdateFailure &&
-                                    <Alert bsStyle="danger">
-                                        <p>Failed to update the camera location.</p>
-                                    </Alert>
-                                }
-
-                                <div className="store-image-container" id="store-image-container">
-                                    {this.props.isUpdatingStore &&
-                                        <div className="updatingOverlay">
-                                            <div className="spinnerWrapper">
-                                                <div className="sk-three-bounce">
-                                                    <div className="sk-child sk-bounce1"></div>
-                                                    <div className="sk-child sk-bounce2"></div>
-                                                    <div className="sk-child sk-bounce3"></div>
+                                        <div className="store-image-container" id="store-image-container">
+                                            {this.props.isUpdatingStore &&
+                                            <div className="updatingOverlay">
+                                                <div className="spinnerWrapper">
+                                                    <div className="sk-three-bounce">
+                                                        <div className="sk-child sk-bounce1"></div>
+                                                        <div className="sk-child sk-bounce2"></div>
+                                                        <div className="sk-child sk-bounce3"></div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    }
+                                            }
 
-                                    {this.state.isSelectingCalibrationObjectLocation &&
-                                        <img id="calibration-object-location"
-                                             src='/img/checkerboard.png'
-                                             style={{
-                                                 "left": this.state.calibrationObjectX - this.state.calibrationObjectSize/2,
-                                                 "top": this.state.calibrationObjectY - this.state.calibrationObjectSize/2,
-                                                 "width": this.state.calibrationObjectSize,
-                                                 "height": this.state.calibrationObjectSize
-                                             }}
-                                             onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
-                                             onWheel={this.onWheelMoved.bind(this)}
-                                             onClick={this.calibrationObjectLocationChosen.bind(this)}
-                                        />
-                                    }
-                                    {   (this.state.isSelectingCameraLocation ||
-                                        this.state.isSelectingCalibrationObjectLocation) &&
-                                        <img id="camera-location"
-                                             src='/img/video-camera-icon.png'
-                                             style={{
-                                                 "left": this.state.cameraX - cameraImageOffsetX,
-                                                 "top": this.state.cameraY - cameraImageOffsetY,
-                                                 "transform": 'rotate(' + this.state.cameraRotation + "rad)"
-                                             }}
-                                             onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
-                                             onWheel={this.onWheelMoved.bind(this)}
-                                             onClick={this.cameraLocationChosen.bind(this)}
-                                        />
-                                    }
-                                    <img id="store-image"
-                                         className="store-image"
-                                         src={this.state.storeMapImage}
-                                         onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
-                                         onWheel={this.onWheelMoved.bind(this)}
-                                    />
+                                            {this.state.isSelectingCalibrationObjectLocation &&
+                                            <img id="calibration-object-location"
+                                                 src='/img/checkerboard.png'
+                                                 style={{
+                                                     "left": this.state.calibrationObjectX - this.state.calibrationObjectSize/2,
+                                                     "top": this.state.calibrationObjectY - this.state.calibrationObjectSize/2,
+                                                     "width": this.state.calibrationObjectSize,
+                                                     "height": this.state.calibrationObjectSize
+                                                 }}
+                                                 onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
+                                                 onWheel={this.onWheelMoved.bind(this)}
+                                                 onClick={this.calibrationObjectLocationChosen.bind(this)}
+                                            />
+                                            }
+                                            {   (this.state.isSelectingCameraLocation ||
+                                                this.state.isSelectingCalibrationObjectLocation) &&
+                                            <img id="camera-location"
+                                                 src='/img/video-camera-icon.png'
+                                                 style={{
+                                                     "left": this.state.cameraX - cameraImageOffsetX,
+                                                     "top": this.state.cameraY - cameraImageOffsetY,
+                                                     "transform": 'rotate(' + this.state.cameraRotation + "rad)"
+                                                 }}
+                                                 onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
+                                                 onWheel={this.onWheelMoved.bind(this)}
+                                                 onClick={this.cameraLocationChosen.bind(this)}
+                                            />
+                                            }
+                                            <img id="store-image"
+                                                 className="store-image"
+                                                 src={this.state.storeMapImage}
+                                                 onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
+                                                 onWheel={this.onWheelMoved.bind(this)}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            </Col>
                         </div>
                     </Col>
                     }
