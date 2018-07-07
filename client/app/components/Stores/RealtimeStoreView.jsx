@@ -124,6 +124,7 @@ class RealtimeStoreView extends React.Component {
                                     {
                                         person.detectionIds.map((cameraId) => (<span>{cameraId}</span>))
                                     }
+                                    <br/>
                                     <p>Zone: {person.zone}</p>
                                 </Popover>
                                 : null
