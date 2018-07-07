@@ -141,6 +141,7 @@ class RealtimeStoreView extends React.Component {
                     <Row>
                         <Col xs={12}>
                             <h2>Realtime Store View</h2>
+                            <p>{this.state.frame ? this.state.frame.timestamp : null}</p>
                             <div className="storeMap">
                                 <img className='store-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/store_layout"} />
                                 {this.state.frame && this.state.frame.people.map((person) => drawPerson(person, false))}
