@@ -10,6 +10,7 @@ import ReactTable from 'react-table'
 import { withProps, branch } from 'recompose';
 import StoreDetails from "./StoreDetails";
 import StoreCameras from "./StoreCameras";
+import CameraGrid from "./CameraGrid";
 import RealtimeStoreView from "./RealtimeStoreView";
 import ListVisitors from "./ListVisitors";
 import StoreInventory from "./StoreInventory";
@@ -65,13 +66,17 @@ class ViewStore extends React.Component {
         }
         else if (tab === "4")
         {
-            this.props.history.push("/store/" + this.props.match.params.storeId + "/visitors");
+            this.props.history.push("/store/" + this.props.match.params.storeId + "/camera_grid");
         }
         else if (tab === "5")
         {
-            this.props.history.push("/store/" + this.props.match.params.storeId + "/inventory");
+            this.props.history.push("/store/" + this.props.match.params.storeId + "/visitors");
         }
         else if (tab === "6")
+        {
+            this.props.history.push("/store/" + this.props.match.params.storeId + "/inventory");
+        }
+        else if (tab === "7")
         {
             this.props.history.push("/minipos/" + this.props.match.params.storeId);
         }
@@ -142,15 +147,18 @@ class ViewStore extends React.Component {
                                 Realtime View
                             </NavItem>
                             <NavItem eventKey="3" href={"/store/" + this.props.match.params.storeId + "/cameras"}>
-                                Cameras
+                                Configure Cameras
                             </NavItem>
-                            <NavItem eventKey="4" href={"/store/" + this.props.match.params.storeId + "/visitors"}>
+                            <NavItem eventKey="4" href={"/store/" + this.props.match.params.storeId + "/camera_grid"}>
+                                View Cameras
+                            </NavItem>
+                            <NavItem eventKey="5" href={"/store/" + this.props.match.params.storeId + "/visitors"}>
                                 Visitors
                             </NavItem>
-                            <NavItem eventKey="5" href={"/store/" + this.props.match.params.storeId + "/inventory"}>
+                            <NavItem eventKey="6" href={"/store/" + this.props.match.params.storeId + "/inventory"}>
                                 Inventory
                             </NavItem>
-                            <NavItem eventKey="6" href={"/minipos/" + this.props.match.params.storeId}>
+                            <NavItem eventKey="7" href={"/minipos/" + this.props.match.params.storeId}>
                                 Mini POS
                             </NavItem>
                         </Nav>
@@ -162,6 +170,7 @@ class ViewStore extends React.Component {
                                  <Route path="/store/:storeId/realtime-view" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(RealtimeStoreView)} />
                                  <Route path="/store/:storeId/cameras" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(StoreCameras)} />
                                  <Route path="/store/:storeId/camera/:cameraId" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(StoreCameras)} />
+                                 <Route path="/store/:storeId/camera_grid" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(CameraGrid)} />
                                  <Route path="/store/:storeId/visitors" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(ListVisitors)} />
                                  <Route path="/store/:storeId/visitor/:visitorId" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(ListVisitors)} />
                                  <Route path="/store/:storeId/inventory" component={withProps(_.extend({}, this.props, this.state, {updateStore: this.updateStore.bind(this), editorState: this.state.editorState, updateEditorState: this.updateEditorState.bind(this)}))(StoreInventory)} />

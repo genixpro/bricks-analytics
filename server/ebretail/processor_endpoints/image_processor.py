@@ -66,7 +66,7 @@ def processImage(request):
     # Copy for the debug image
     debugImage = image.copy()
 
-    imageAnalyzer = ImageAnalyzer.sharedInstance(initializeTracking=True)
+    imageAnalyzer = ImageAnalyzer.sharedInstance(initializeTracking = True)
 
     # Only one process can be working on images for a camera at one time
     with globalLocksLock:

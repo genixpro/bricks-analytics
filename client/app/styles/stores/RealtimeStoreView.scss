@@ -3,25 +3,30 @@
 .realtime-store-view
 {
   .storeMap {
-    display: block;
-    padding: 10px;
+    display: inline-block;
+    padding: 0px;
     margin: 10px;
     position: relative;
     border: 1px inset grey;
-    overflow: hidden;
 
     img.store-image {
-      width: 100%;
+      max-width: 100%;
+      max-height: 95vh;
     }
 
     .person-location-box {
       position: absolute;
+      cursor: pointer;
     }
 
     .person-image-wrapper {
       border: 1px solid black;
       background: #dadada;
       opacity: 0.5;
+    }
+
+    #person-popover {
+      width: 200px;
     }
 
     .visitor-id-block {
