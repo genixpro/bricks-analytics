@@ -12,7 +12,7 @@ import cProfile
 
 
 def computeAccuracy_impl(hyperParameters):
-    testFile = '/home/bradley/bricks-analytics-data/session1/capture1.json'
+    testFile = '/home/bricks/bricks-analytics-data/session1/capture1.json'
 
     test = CaptureTest(testFile)
 

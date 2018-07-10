@@ -66,7 +66,7 @@ def processImage(request):
     # Copy for the debug image
     debugImage = image.copy()
 
-    imageAnalyzer = ImageAnalyzer.sharedInstance()
+    imageAnalyzer = ImageAnalyzer.sharedInstance(initializeTracking=True)
 
     # Only one process can be working on images for a camera at one time
     with globalLocksLock:
@@ -100,8 +100,7 @@ def processImage(request):
                     recordMetadata = {
                         "storeId": metadata['storeId'],
                         "cameraId": metadata['cameraId'],
-                        "timestamp": metadata['timestamp'],
-                        "cameraIndex": metadata['cameraIndex']
+                        "timestamp": metadata['timestamp']
                     }
 
                     imageRecordUrl = "http://localhost:1806/store/" + str(recordMetadata['storeId']) + "/cameras/" + str(recordMetadata['cameraId']) + "/image"
@@ -126,7 +125,6 @@ def processImage(request):
                         "storeId": metadata['storeId'],
                         "cameraId": metadata['cameraId'],
                         "timestamp": metadata['timestamp'],
-                        "cameraIndex": metadata['cameraIndex'],
                         "detectionId": detectionId
                     }
 
