@@ -40,7 +40,7 @@ class ImageCollector:
         self.recordNextImage = {}
         self.recordEverything = True
 
-        self.collectionFrequency = 500
+        self.collectionFrequency = 250
         self.uploadTimeout = 5
 
         self.bannedCameras = ['USB2.0 HD UVC WebCam: USB2.0 HD'] # This represents my laptop camera
@@ -64,15 +64,17 @@ class ImageCollector:
         self.amqpChannel = self.amqpConnection.channel()
         self.amqpChannel.queue_declare(queue=self.metadata['collectorId'])
 
-        for cameraIndex,camera in enumerate(self.cameras):
-            cameraId = self.cameraId(cameraIndex)
-            self.amqpChannel.exchange_declare(exchange=cameraId, exchange_type='fanout')
-            self.amqpChannel.queue_bind(queue=self.metadata['collectorId'], exchange=cameraId)
-
         self.amqpChannel.basic_consume(
             lambda ch, method, properties, body: self.handleCameraQueueMessage(ch, method, properties, str(body, 'utf8')),
             queue=self.metadata['collectorId'],
             no_ack=True)
+
+    def startAMQPForCamera(self, cameraId):
+        self.amqpChannel.exchange_declare(exchange=cameraId, exchange_type='fanout')
+        self.amqpChannel.queue_bind(queue=self.metadata['collectorId'], exchange=cameraId)
+
+    def stopAMQPForCamera(self, cameraId):
+        self.amqpChannel.exchange_delete(exchange=cameraId)
 
     def amqpConnectionThread(self):
         while True:
@@ -121,7 +123,7 @@ class ImageCollector:
             futures = []
             for subnet in random.sample(list(range(3)) + [64], 4):
                 for ip in random.sample(range(1, 255), 254):
-                    url = 'http://192.168.' + str(subnet) + '.' + str(ip) + ':8080/video/mjpeg?fps=4'
+                    url = 'http://192.168.' + str(subnet) + '.' + str(ip) + ':8080/video/mjpeg?fps=5'
                     id = str(int(str(subnet) + str(ip)))
                     futures.append(executor.submit(testURL, id, url))
 
@@ -226,10 +228,20 @@ class ImageCollector:
         for camera in camerasToClose:
             print("Ending capture for ", camera)
 
+        for camera in camerasToClose:
+            for cameraIndex in range(len(self.cameras)):
+                if self.cameras[cameraIndex] == camera:
+                    self.stopAMQPForCamera(self.cameraId(cameraIndex))
+
         self.openedLocalCameras = list(filter(lambda item: item[0] not in camerasToClose, self.openedLocalCameras))
         self.openedLocalCameras = self.openedLocalCameras + [(id, cv2.VideoCapture(device)) for id,device in camerasToOpen]
 
         self.cameras = self.openedNetworkCameras + self.openedLocalCameras
+
+        for camera in camerasToOpen:
+            for cameraIndex in range(len(self.cameras)):
+                if self.cameras[cameraIndex] == camera:
+                    self.startAMQPForCamera(self.cameraId(cameraIndex))
 
         if len(camerasToOpen) > 0 or len(camerasToClose) > 0:
             return True
@@ -247,7 +259,17 @@ class ImageCollector:
         for camera in camerasToClose:
             print("Ending capture for ", camera)
 
+        for camera in camerasToClose:
+            for cameraIndex in range(len(self.cameras)):
+                if self.cameras[cameraIndex] == camera:
+                    self.stopAMQPForCamera(self.cameraId(cameraIndex))
+
         self.openedNetworkCameras = list(filter(lambda item: item[0] not in camerasToClose, self.openedNetworkCameras))
+
+        for camera in camerasToOpen:
+            for cameraIndex in range(len(self.cameras)):
+                if self.cameras[cameraIndex] == camera:
+                    self.startAMQPForCamera(self.cameraId(cameraIndex))
 
         for id, url in camerasToOpen:
             thread = threading.Thread(target=lambda: self.cameraDownloadThread(id, url), daemon=True)
@@ -381,16 +403,16 @@ class ImageCollector:
         # First, start up threads for network and local usb scanning.
         self.networkScanningThread.start()
         self.localScanningThread.start()
-
-        time.sleep(10)
+        self.amqpThread.start()
+        print("Waiting 30 seconds to find all cameras.")
+        time.sleep(30)
 
         self.synchronizeLocalCameras()
         self.synchronizeNetworkCameras()
-
-        # self.register()
-        self.amqpThread.start()
-
         frameNumber = 0
+
+        # Get the order for the cameras - this never changes
+        cameraIds = [self.cameraId(cameraIndex) for cameraIndex in range(len(self.cameras))]
 
         # Make sure we have at least one camera
         if len(self.cameras) == 0:
@@ -398,9 +420,20 @@ class ImageCollector:
 
         lastFrameTime = datetime.fromtimestamp(time.time() - (time.time() % 0.5))
 
+        maxWidth = 0
+        maxHeight = 0
+        for index, image in enumerate(self.captureImages()):
+            cameraImage = Image.fromarray(image[0])
+
+            maxWidth += cameraImage.size[0]
+            maxHeight = max(maxHeight, cameraImage.size[1])
+
         # Start grabbing frames and forwarding them with their time stamp
         while True:
             try:
+                self.synchronizeLocalCameras()
+                self.synchronizeNetworkCameras()
+
                 # Delay until the next frame time
                 nextFrameTime = lastFrameTime + timedelta(milliseconds=self.collectionFrequency)
                 delayTime = max(0, (nextFrameTime - datetime.now()).total_seconds())
@@ -409,7 +442,7 @@ class ImageCollector:
 
                 frameNumber += 1
 
-                self.captureSingleDatasetImage(str(frameNumber).zfill(5))
+                self.captureSingleDatasetImage(str(frameNumber).zfill(5), cameraIds=cameraIds, maxWidth=maxWidth, maxHeight=maxHeight)
 
                 lastFrameTime = nextFrameTime
             except Exception as e:
@@ -428,28 +461,32 @@ class ImageCollector:
                 self.captureImages()
                 time.sleep(0.05)
 
-            self.captureSingleDatasetImage(lastFrameTime)
+            maxWidth = 0
+            maxHeight = 0
+            for index, image in enumerate(self.captureImages()):
+                cameraImage = Image.fromarray(image[0])
+
+                maxWidth += cameraImage.size[0]
+                maxHeight = max(maxHeight, cameraImage.size[1])
+
+            self.captureSingleDatasetImage(lastFrameTime, cameraIds=[camera[0] for camera in self.cameras], maxWidth=maxWidth, maxHeight=maxHeight)
         except Exception as e:
             raise e
 
 
-    def captureSingleDatasetImage(self, frameName):
-        maxWidth = 0
-        maxHeight = 0
-        for index, image in enumerate(self.captureImages()):
-            cameraImage = Image.fromarray(image)
-
-            maxWidth += cameraImage.size[0]
-            maxHeight = max(maxHeight, cameraImage.size[1])
-
+    def captureSingleDatasetImage(self, frameName, cameraIds, maxWidth, maxHeight):
         newImage = Image.new('RGB', (maxWidth, maxHeight))
         x_offset = 0
 
-        # Do a grab for each device
-        for index, image in enumerate(self.captureImages()):
-            cameraId = self.cameraId(index)
+        images = self.captureImages()
 
-            cameraImage = Image.fromarray(image)
+        for id in cameraIds:
+            cameraImage = Image.new('RGB', (640,480), (0,0,0))
+
+            for image in images:
+                if image[1] == id:
+                    cameraImage = Image.fromarray(image[0])
+                    break
 
             newImage.paste(cameraImage, (x_offset, 0))
             x_offset += cameraImage.size[0]
