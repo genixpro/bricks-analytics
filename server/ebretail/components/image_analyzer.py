@@ -67,7 +67,7 @@ class ImageAnalyzer:
         #
         # # These hyper parameters were the human defined starting point
         self.humanHyperParameters = {
-            'calibration_point_size': 10, # Our calibration checkboard consists of 10cm squares
+            'calibration_point_size': 14, # Our calibration checkboard consists of 14cm squares, 5x7
             'eye_height': 165, # 165cm eye level
             'eye_location_estimate_weight': 1,
             'foot_height': 10,# 10cm, approximate height of shin off the ground, which is where the detector usually detects
@@ -104,7 +104,7 @@ class ImageAnalyzer:
 
         # These hyper parameters were optimized on bricks-analytics-data/session1/capture1 on June 21, 2018
         self.hyperParameters = {
-            "calibration_point_size": 10,
+            "calibration_point_size": 14,
             "eye_height": 178.46456164407826,
             "eye_location_estimate_weight": 3.870025451975597,
             "foot_height": 13.934875332357661,
@@ -770,7 +770,7 @@ class ImageAnalyzer:
             if cacheId in self.detectionCache['calibrationObjects']:
                 return self.detectionCache['calibrationObjects'][cacheId]
 
-        chessBoardSize = (4,4)
+        chessBoardSize = (4,6)
 
         # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
         objp = np.zeros((chessBoardSize[0] * chessBoardSize[1], 3), np.float32)
@@ -855,16 +855,17 @@ class ImageAnalyzer:
             allowTrackCreationDeletion = True
 
             # Determine what zone this detection is located within
-            for zone in storeConfiguration['zones']:
-                relX = person['x'] / storeConfiguration['storeMap']['width']
-                relY = person['y'] / storeConfiguration['storeMap']['height']
-                if relX >= zone['left'] and relX <= zone['right'] and relY >= zone['top'] and relY <= zone['bottom']:
-                    # This is the correct zone.
-                    # If this is not an entry zone,
-                    # we don't allow the track to appear or disappear
-                    if 'zoneType' in zone and zone['zoneType'] != 'entry':
-                        allowTrackCreationDeletion = False
-                    break
+            # NOTE: Disabled this code temporarily, along people to appear and disappear anywhere.
+            # for zone in storeConfiguration['zones']:
+            #     relX = person['x'] / storeConfiguration['storeMap']['width']
+            #     relY = person['y'] / storeConfiguration['storeMap']['height']
+            #     if relX >= zone['left'] and relX <= zone['right'] and relY >= zone['top'] and relY <= zone['bottom']:
+            #         # This is the correct zone.
+            #         # If this is not an entry zone,
+            #         # we don't allow the track to appear or disappear
+            #         if 'zoneType' in zone and zone['zoneType'] != 'entry':
+            #             allowTrackCreationDeletion = False
+            #         break
 
             detection = [
                             person['x'] - trackerBoxSize / 2,
