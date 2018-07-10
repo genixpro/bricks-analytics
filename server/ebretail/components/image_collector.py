@@ -70,10 +70,12 @@ class ImageCollector:
             no_ack=True)
 
     def startAMQPForCamera(self, cameraId):
+        print("Starting AMQP for camera " + cameraId)
         self.amqpChannel.exchange_declare(exchange=cameraId, exchange_type='fanout')
         self.amqpChannel.queue_bind(queue=self.metadata['collectorId'], exchange=cameraId)
 
     def stopAMQPForCamera(self, cameraId):
+        print("Stopping AMQP for camera " + cameraId)
         self.amqpChannel.exchange_delete(exchange=cameraId)
 
     def amqpConnectionThread(self):
@@ -230,7 +232,7 @@ class ImageCollector:
 
         for camera in camerasToClose:
             for cameraIndex in range(len(self.cameras)):
-                if self.cameras[cameraIndex] == camera:
+                if self.cameras[cameraIndex][0] == camera:
                     self.stopAMQPForCamera(self.cameraId(cameraIndex))
 
         self.openedLocalCameras = list(filter(lambda item: item[0] not in camerasToClose, self.openedLocalCameras))
@@ -240,7 +242,7 @@ class ImageCollector:
 
         for camera in camerasToOpen:
             for cameraIndex in range(len(self.cameras)):
-                if self.cameras[cameraIndex] == camera:
+                if self.cameras[cameraIndex][0] == camera[0]:
                     self.startAMQPForCamera(self.cameraId(cameraIndex))
 
         if len(camerasToOpen) > 0 or len(camerasToClose) > 0:
@@ -261,15 +263,10 @@ class ImageCollector:
 
         for camera in camerasToClose:
             for cameraIndex in range(len(self.cameras)):
-                if self.cameras[cameraIndex] == camera:
+                if self.cameras[cameraIndex][0] == camera:
                     self.stopAMQPForCamera(self.cameraId(cameraIndex))
 
         self.openedNetworkCameras = list(filter(lambda item: item[0] not in camerasToClose, self.openedNetworkCameras))
-
-        for camera in camerasToOpen:
-            for cameraIndex in range(len(self.cameras)):
-                if self.cameras[cameraIndex] == camera:
-                    self.startAMQPForCamera(self.cameraId(cameraIndex))
 
         for id, url in camerasToOpen:
             thread = threading.Thread(target=lambda: self.cameraDownloadThread(id, url), daemon=True)
@@ -291,6 +288,11 @@ class ImageCollector:
             tries += 1
 
         self.cameras = self.openedNetworkCameras + self.openedLocalCameras
+
+        for camera in camerasToOpen:
+            for cameraIndex in range(len(self.cameras)):
+                if self.cameras[cameraIndex][0] == camera[0]:
+                    self.startAMQPForCamera(self.cameraId(cameraIndex))
 
         if len(camerasToOpen) > 0 or len(camerasToClose) > 0:
             return True
@@ -443,6 +445,7 @@ class ImageCollector:
                 frameNumber += 1
 
                 self.captureSingleDatasetImage(str(frameNumber).zfill(5), cameraIds=cameraIds, maxWidth=maxWidth, maxHeight=maxHeight)
+                sys.stdout.flush()
 
                 lastFrameTime = nextFrameTime
             except Exception as e:
