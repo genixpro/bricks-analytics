@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import sys
 import os
 
@@ -12,6 +14,7 @@ from ebretail.components.CaptureTest import CaptureTest
 import hyperopt
 import random
 import datetime
+import traceback
 
 
 def usage(argv):
@@ -20,13 +23,12 @@ def usage(argv):
           '(example: "%s")' % (cmd, cmd))
     sys.exit(1)
 
-if __name__ == '__main__':
-    testFile = '/home/bradley/bricks-analytics-data/session1/capture1.json'
 
+def optimizeCapture(roundNumber):
     space = {
             'store_map_tracker_min_hits': hyperopt.hp.quniform('store_map_min_hits', 0, 10, 1),
             'store_map_tracker_max_age': hyperopt.hp.quniform('store_map_max_age', 1, 20, 1),
-            'calibration_point_size': hyperopt.hp.quniform('calibration_point_size', 9, 11),
+            'calibration_point_size': hyperopt.hp.uniform('calibration_point_size', 9, 11),
             'foot_height': hyperopt.hp.uniform('foot_height', 0, 20),
             'knee_height': hyperopt.hp.uniform('knee_height', 20, 80),
             'hip_height': hyperopt.hp.uniform('hip_height', 50, 100),
@@ -68,7 +70,7 @@ if __name__ == '__main__':
     test = CaptureTest(testFile)
 
     # Start from the default hyper parameters
-    hyperParameters = test.imageAnalyzer.hyperParameters
+    hyperParameters = dict(test.imageAnalyzer.humanHyperParameters)
 
     # Compute our baseline
     best = ebretail.components.optimization.computeAccuracy(hyperParameters)
@@ -76,8 +78,10 @@ if __name__ == '__main__':
     printResults(best, "Baseline")
 
     experiment = 0
+    maxTrialsWithoutImprovement = 25
+    trialsWithoutImprovement = 0
 
-    while True:
+    while trialsWithoutImprovement < maxTrialsWithoutImprovement:
         start = datetime.datetime.now()
 
         # Pick two variables to optimize
@@ -94,25 +98,27 @@ if __name__ == '__main__':
         print("Testing fields: ", keysToOptimize)
 
         try:
-            trials = MongoTrials('mongo://localhost:27017/ebretail_optimization/jobs', exp_key='exp' + str(experiment))
+            # pprint(trialSpace)
+            trials = MongoTrials('mongo://localhost:27017/ebretail_optimization/jobs', exp_key='round' + str(roundNumber) + '-exp' + str(experiment))
             hyperopt.fmin(fn=ebretail.components.optimization.computeAccuracy,
                         space=trialSpace,
                         algo=hyperopt.tpe.suggest,
-                        max_evals=10 + experiment, # We make the optimization sequences longer as the system moves along, since it gets harder and harder to find a good optimization
+                        max_evals=10+experiment, # We make the optimization sequences longer as the system moves along, since it gets harder and harder to find a good optimization
                         trials=trials)
-        except Exception:
+        except Exception as e:
             print("Crashed! Retrying.")
+            print(traceback.format_exc())
             continue
 
         optimizedBest = min(*trials.results, key=lambda result: result['loss'])
 
-        print("Tested:")
-        for result in trials.results:
-            filteredHyperParameters = {key: value for key, value in result['hyperParameters'].items() if key in keysToOptimize}
-            print(pformat(filteredHyperParameters, width=200), "  Loss: ", result['loss'])
+        # print("Tested:")
+        # for result in trials.results:
+        #     filteredHyperParameters = {key: value for key, value in result['hyperParameters'].items() if key in keysToOptimize}
+        #     print(pformat(filteredHyperParameters, width=200), "  Loss: ", result['loss'])
 
-        for l in range(4):
-            print('=' * 20)
+        # for l in range(4):
+        #     print('=' * 20)
 
         # Only accept the change if its at least 1 point better.
         # This will prevent meaningless changes that had almost
@@ -131,6 +137,7 @@ if __name__ == '__main__':
             for key in keysToOptimize:
                 hyperParameters[key] = optimizedBest['hyperParameters'][key]
             best = optimizedBest
+            trialsWithoutImprovement = 0
         else:
             print("Did not beat existing benchmark by at least 1 point.")
             print("Keeping:")
@@ -142,6 +149,7 @@ if __name__ == '__main__':
             print(pformat(filteredHyperParameters, width=160))
             print(pformat(optimizedBest['detailedLoss'], width=160))
             print("Rejected this update.")
+            trialsWithoutImprovement += 1
 
         printResults(best, "Current Best")
 
@@ -151,3 +159,18 @@ if __name__ == '__main__':
 
         experiment += 1
 
+    for l in range(4):
+        print('=' * 20)
+    printResults(best, "Final Results")
+    with open('round-' + str(roundNumber) + '.json', 'wt') as file:
+        json.dump(best, file, indent=4)
+
+if __name__ == '__main__':
+    testFile = '/home/bricks/bricks-analytics-data/session1/capture1.json'
+
+
+    round = 0
+
+    while True:
+        optimizeCapture(round)
+        round += 1

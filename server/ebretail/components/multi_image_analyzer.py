@@ -51,7 +51,7 @@ class MultiImageAnalyzer:
                     if data['frameNumber'] in self.scheduledFrames:
                         self.scheduledFrames[data['frameNumber']].cancel()
 
-                    self.scheduler.enter(5, 0, self.processFrame, (data,))
+                    self.scheduler.enter(1.5, 0, self.processFrame, (data,))
         except pymongo.errors.PyMongoError as e:
             # The ChangeStream encountered an unrecoverable error or the
             # resume attempt failed to recreate the cursor.

@@ -21,6 +21,16 @@ class VisitSummary extends React.Component {
                 "value": 5
             };
         });
+
+        this.displayDetectionIds = [];
+
+        const count = Math.min(6, props.visitor.detectionIds.length);
+        for (let x = 0; x < count; x += 1)
+        {
+            const detectionIndex = Math.floor((props.visitor.detectionIds.length - 1) * (x / count));
+            this.displayDetectionIds.push(props.visitor.detectionIds[detectionIndex]);
+        }
+
     }
 
     getConcentrationZoneData()
@@ -98,8 +108,8 @@ class VisitSummary extends React.Component {
                         <h2>Person Identification</h2>
                         <div className={'person-images'}>
                             {
-                                this.props.visitor.detectionIds ?
-                                    this.props.visitor.detectionIds.map((detectionId) =>
+                                this.displayDetectionIds ?
+                                    this.displayDetectionIds.map((detectionId) =>
                                     {
                                         return <img className='detection-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/detections/" + detectionId + "/image"} />;
                                     })

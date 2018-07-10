@@ -1,7 +1,7 @@
 import time
 from datetime import datetime, timedelta
 import json
-from pprint import pprint
+from pprint import pprint, pformat
 import concurrent.futures
 import cv2
 import requests
@@ -17,7 +17,7 @@ import os
 import subprocess
 
 import pika
-
+import sys
 
 class ImageCollector:
     """
@@ -55,6 +55,8 @@ class ImageCollector:
         self.openedLocalCameras = []
 
         self.latestImage = {}
+
+        self.showImageLock = threading.Lock()
 
     def connectToAmqp(self):
         # Open a connection to the message broker
@@ -117,7 +119,7 @@ class ImageCollector:
                     except Exception as e:
                         return False
             futures = []
-            for subnet in random.sample(range(3), 3):
+            for subnet in random.sample(list(range(3)) + [64], 4):
                 for ip in random.sample(range(1, 255), 254):
                     url = 'http://192.168.' + str(subnet) + '.' + str(ip) + ':8080/video/mjpeg?fps=4'
                     id = str(int(str(subnet) + str(ip)))
@@ -308,7 +310,7 @@ class ImageCollector:
                     self.register()
 
                 # Capture all the images
-                newImages = self.captureImages()
+                capturedImages = self.captureImages()
 
                 # Wait for last frames images to finish being uploaded
                 for future in concurrent.futures.as_completed(uploadFutures):
@@ -317,12 +319,10 @@ class ImageCollector:
                         break
 
                 # Grab all the images
-                for index, image in enumerate(newImages):
+                for image, cameraId in capturedImages:
                     # Skip any invalid images
                     if image is None:
                         continue
-
-                    cameraId = self.cameraId(index)
 
                     record = False
                     if self.recordEverything:
@@ -331,7 +331,7 @@ class ImageCollector:
                         record = True
                         self.recordNextImage[cameraId] = False
 
-                    uploadFutures.append(self.executor.submit(lambda i, c: self.uploadImageToProcessor(i, cameraId, nextFrameTime, record=record), image.copy(), index))
+                    uploadFutures.append(self.executor.submit(lambda image, id, time, record: self.uploadImageToProcessor(image, id, time, record), numpy.copy(image), cameraId, nextFrameTime, record))
 
                 lastFrameTime = nextFrameTime
             except Exception as e:
@@ -350,6 +350,7 @@ class ImageCollector:
                 "timestamp": timeStamp.strftime("%Y-%m-%dT%H:%M:%S.%f"),
                 "record": record
             }
+
             r = requests.post(self.imageProcessorUrl, files={'image': b, "metadata": json.dumps(metadata)}, timeout=self.uploadTimeout)
             print(metadata['cameraId'] + "  Successfully uploaded " + metadata['timestamp'])
         except Exception as e:
@@ -364,13 +365,15 @@ class ImageCollector:
                 success = camera[1].grab()
 
         for index, camera in enumerate(self.cameras):
+            cameraId = self.cameraId(index)
             if type(camera[1]) is not str:
-                cameraId = self.cameraId(index)
                 image = camera[1].retrieve()[1]
-            else:
+            elif camera[0] in self.latestImage:
                 image = self.latestImage[camera[0]]
+            else:
+                image = numpy.zeros((480, 640, 3))
 
-            images.append(image)
+            images.append((image, cameraId))
 
         return images
 

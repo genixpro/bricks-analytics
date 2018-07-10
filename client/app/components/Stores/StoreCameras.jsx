@@ -201,26 +201,47 @@ class StoreCameras extends React.Component {
         camera.calibrationReferencePoint = {
             "x": ((this.state.calibrationObjectX - this.state.calibrationObjectSize/2) / bounds.width) * storeImageElem.naturalWidth,
             "y": ((this.state.calibrationObjectY - this.state.calibrationObjectSize/2) / bounds.height) * storeImageElem.naturalHeight,
-            "unitWidth": (this.state.calibrationObjectSize / bounds.width / 5) * storeImageElem.naturalWidth,
+            "unitWidth": (this.state.calibrationObjectSize / bounds.width / 7) * storeImageElem.naturalWidth,
             "unitHeight": (this.state.calibrationObjectSize / bounds.height / 5) * storeImageElem.naturalHeight
         };
 
+        let direction = this.state.calibrationObjectRotation;
+
         if (this.state.cameraRotation <= (Math.PI / 4) || this.state.cameraRotation >= (Math.PI * 7.0 / 4.0))
         {
-            camera.calibrationReferencePoint.direction = 'north';
+            direction += 0;
         }
         else if (this.state.cameraRotation >= (Math.PI / 4) && this.state.cameraRotation <= (Math.PI * 3.0 / 4.0))
         {
-            camera.calibrationReferencePoint.direction = 'east';
+            direction += 1;
         }
         else if (this.state.cameraRotation >= (Math.PI * 3.0 / 4.0) && this.state.cameraRotation <= (Math.PI * 5.0 / 4.0))
         {
-            camera.calibrationReferencePoint.direction = 'south';
+            direction += 2;
         }
         else if (this.state.cameraRotation >= (Math.PI * 5.0 / 4.0) && this.state.cameraRotation <= (Math.PI * 7.0 / 4.0))
         {
+            direction += 3;
+        }
+
+        direction = direction % 4;
+        if (direction === 0)
+        {
+            camera.calibrationReferencePoint.direction = 'north';
+        }
+        if (direction === 1)
+        {
+            camera.calibrationReferencePoint.direction = 'east';
+        }
+        if (direction === 2)
+        {
+            camera.calibrationReferencePoint.direction = 'south';
+        }
+        if (direction === 3)
+        {
             camera.calibrationReferencePoint.direction = 'west';
         }
+
 
         camera.width = liveImageElem.naturalWidth;
         camera.height = liveImageElem.naturalHeight;
@@ -237,23 +258,34 @@ class StoreCameras extends React.Component {
         return camera;
     }
 
-    calibrationObjectLocationChosen()
+    calibrationObjectLocationChosen(event)
     {
         if (this.state.isSelectingCalibrationObjectLocation)
         {
-            this.setState({
-                isSelectingCameraLocation: false,
-                isSelectingCalibrationObjectLocation: false
-            });
-            this.updateCalibrationRotation();
+            if (event.button === 0)
+            {
+                this.setState({
+                    isSelectingCameraLocation: false,
+                    isSelectingCalibrationObjectLocation: false
+                });
+                this.updateCalibrationRotation();
 
-            // Make the modification to the camera data.
-            const newStore = this.props.store;
-            const camera = _.findWhere(newStore.cameras, {cameraId: this.state.selectedCamera});
-            const newCamera = this.getCameraConfigurationObject();
-            Object.keys(newCamera).forEach((key) => camera[key] = newCamera[key]);
+                // Make the modification to the camera data.
+                const newStore = this.props.store;
+                const camera = _.findWhere(newStore.cameras, {cameraId: this.state.selectedCamera});
+                const newCamera = this.getCameraConfigurationObject();
+                Object.keys(newCamera).forEach((key) => camera[key] = newCamera[key]);
 
-            this.props.updateStore(newStore, () => this.resetCalibrationStoreMapImage());
+                this.props.updateStore(newStore, () => this.resetCalibrationStoreMapImage());
+            }
+
+            if (event.button == 1)
+            {
+                const newDirection = (this.state.calibrationObjectRotation + 1) % 4;
+                this.setState({calibrationObjectRotation: newDirection});
+                event.preventDefault();
+                this.updateCalibrationStoreMapImage();
+            }
         }
     }
 
@@ -438,8 +470,7 @@ class StoreCameras extends React.Component {
                                                  style={{
                                                      "left": this.state.calibrationObjectX - this.state.calibrationObjectSize/2,
                                                      "top": this.state.calibrationObjectY - this.state.calibrationObjectSize/2,
-                                                     "width": this.state.calibrationObjectSize,
-                                                     "height": this.state.calibrationObjectSize
+                                                     "width": this.state.calibrationObjectSize
                                                  }}
                                                  onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
                                                  onWheel={this.onWheelMoved.bind(this)}
