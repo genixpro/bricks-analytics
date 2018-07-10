@@ -375,7 +375,14 @@ class ImageCollector:
         return images
 
     def captureDatasetMain(self):
-        self.openLocalCameras()
+        # First, start up threads for network and local usb scanning.
+        self.networkScanningThread.start()
+        self.localScanningThread.start()
+
+        time.sleep(10)
+
+        self.synchronizeLocalCameras()
+        self.synchronizeNetworkCameras()
 
         # self.register()
         self.amqpThread.start()
