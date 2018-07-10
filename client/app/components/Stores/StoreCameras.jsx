@@ -201,7 +201,7 @@ class StoreCameras extends React.Component {
         camera.calibrationReferencePoint = {
             "x": ((this.state.calibrationObjectX - this.state.calibrationObjectSize/2) / bounds.width) * storeImageElem.naturalWidth,
             "y": ((this.state.calibrationObjectY - this.state.calibrationObjectSize/2) / bounds.height) * storeImageElem.naturalHeight,
-            "unitWidth": (this.state.calibrationObjectSize / bounds.width / 5) * storeImageElem.naturalWidth,
+            "unitWidth": (this.state.calibrationObjectSize / bounds.width / 7) * storeImageElem.naturalWidth,
             "unitHeight": (this.state.calibrationObjectSize / bounds.height / 5) * storeImageElem.naturalHeight
         };
 
@@ -470,8 +470,7 @@ class StoreCameras extends React.Component {
                                                  style={{
                                                      "left": this.state.calibrationObjectX - this.state.calibrationObjectSize/2,
                                                      "top": this.state.calibrationObjectY - this.state.calibrationObjectSize/2,
-                                                     "width": this.state.calibrationObjectSize,
-                                                     "height": this.state.calibrationObjectSize
+                                                     "width": this.state.calibrationObjectSize
                                                  }}
                                                  onMouseMove={this.mouseMovedOnStoreLayout.bind(this)}
                                                  onWheel={this.onWheelMoved.bind(this)}
