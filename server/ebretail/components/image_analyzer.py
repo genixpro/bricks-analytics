@@ -66,69 +66,73 @@ class ImageAnalyzer:
         ]
         #
         # # These hyper parameters were the human defined starting point
-        # self.hyperParameters = {
-        #     'calibration_point_size': 10, # Our calibration checkboard consists of 10cm squares
-        #     'eye_height': 165, # 165cm eye level
-        #     'eye_location_estimate_weight': 1,
-        #     'foot_height': 10,# 10cm, approximate height of shin off the ground, which is where the detector usually detects
-        #     'foot_location_estimate_weight': 10,
-        #     'hip_height': 80, # 80cm where hips are
-        #     'hip_location_estimate_weight': 3,
-        #     'image_tracker_feature_vector_threshold': 0.3,
-        #     'image_tracker_feature_vector_update_speed': 0.3,
-        #     'image_tracker_iou_weight': 1.0,
-        #     'image_tracker_match_score_threshold': 0.2,
-        #     'image_tracker_max_age': 3,
-        #     'image_tracker_min_hits': 4,
-        #     'image_tracker_min_keypoints': 4,
-        #     'image_tracker_similarity_weight': 1.5,
-        #     'knee_height': 50,# 50cm, approx where knees are,
-        #     'knee_location_estimate_weight': 5,
-        #     'shoulder_height': 150, # 150cm where shoulders are
-        #     'shoulder_location_estimate_weight': 1,
-        #     'store_map_merge_distance': 100, # 100px merge distance
-        #     'store_map_tracker_euclid_mode_distance_weight': 1.0,
-        #     'store_map_tracker_euclid_mode_similarity_weight': 2.0,
-        #     'store_map_tracker_euclid_threshold': 200,
-        #     'store_map_tracker_feature_vector_threshold': 0.3,
-        #     'store_map_tracker_feature_vector_update_speed': 0.3,
-        #     'store_map_tracker_match_score_threshold': 0.2,
-        #     'store_map_tracker_max_age': 5,
-        #     'store_map_tracker_min_hits': 3,
-        #     'store_map_tracker_new_track_min_dist': 300
-        # }
+        self.humanHyperParameters = {
+            'calibration_point_size': 10, # Our calibration checkboard consists of 10cm squares
+            'eye_height': 165, # 165cm eye level
+            'eye_location_estimate_weight': 1,
+            'foot_height': 10,# 10cm, approximate height of shin off the ground, which is where the detector usually detects
+            'foot_location_estimate_weight': 10,
+            'hip_height': 80, # 80cm where hips are
+            'hip_location_estimate_weight': 3,
+            'image_tracker_feature_vector_threshold': 0.3,
+            'image_tracker_feature_vector_update_speed': 0.3,
+            'image_tracker_iou_weight': 1.0,
+            'image_tracker_match_score_threshold': 0.2,
+            'image_tracker_max_age': 3,
+            'image_tracker_min_hits': 4,
+            'image_tracker_min_keypoints': 4,
+            'image_tracker_similarity_weight': 1.5,
+            'knee_height': 50,# 50cm, approx where knees are,
+            'knee_location_estimate_weight': 5,
+            'shoulder_height': 150, # 150cm where shoulders are
+            'shoulder_location_estimate_weight': 1,
+            'store_map_merge_distance': 100, # 100px merge distance
+            'store_map_tracker_euclid_mode_distance_weight': 1.0,
+            'store_map_tracker_euclid_mode_similarity_weight': 2.0,
+            'store_map_tracker_euclid_threshold': 200,
+            'store_map_tracker_feature_vector_threshold': 0.3,
+            'store_map_tracker_feature_vector_update_speed': 0.3,
+            'store_map_tracker_match_score_threshold': 0.2,
+            'store_map_tracker_max_age': 5,
+            'store_map_tracker_min_hits': 3,
+            'store_map_tracker_new_track_min_dist': 300
+        }
+
+        #
+        # # These hyper parameters were the human defined starting point
+        # self.hyperParameters = dict(self.humanHyperParameters)
 
         # These hyper parameters were optimized on bricks-analytics-data/session1/capture1 on June 21, 2018
         self.hyperParameters = {
-            'calibration_point_size': 10,
-             'eye_height': 165,
-             'eye_location_estimate_weight': 1,
-             'foot_height': 10,
-             'foot_location_estimate_weight': 9.340166533733008,
-             'hip_height': 81.27174673173252,
-             'hip_location_estimate_weight': 3,
-             'image_tracker_feature_vector_threshold': 0.3,
-             'image_tracker_feature_vector_update_speed': 0.2347931112486611,
-             'image_tracker_iou_weight': 3.2750416652073624,
-             'image_tracker_match_score_threshold': 0.2,
-             'image_tracker_max_age': 7.0,
-             'image_tracker_min_hits': 3.0,
-             'image_tracker_min_keypoints': 4,
-             'image_tracker_similarity_weight': 2.6199129306999853,
-             'knee_height': 50,
-             'knee_location_estimate_weight': 9.954308615784647,
-             'shoulder_height': 173.90076091454534,
-             'shoulder_location_estimate_weight': 1,
-             'store_map_merge_distance': 65.0,
-             'store_map_tracker_euclid_mode_distance_weight': 1.0,
-             'store_map_tracker_euclid_mode_similarity_weight': 2.0,
-             'store_map_tracker_euclid_threshold': 207.15254555541597,
-             'store_map_tracker_feature_vector_threshold': 0.3,
-             'store_map_tracker_feature_vector_update_speed': 0.15995710971563637,
-             'store_map_tracker_match_score_threshold': 0.2,
-             'store_map_tracker_max_age': 6.0,
-             'store_map_tracker_min_hits': 7.0,
-             'store_map_tracker_new_track_min_dist': 300
+            "calibration_point_size": 10,
+            "eye_height": 178.46456164407826,
+            "eye_location_estimate_weight": 3.870025451975597,
+            "foot_height": 13.934875332357661,
+            "foot_location_estimate_weight": 7.951024928826957,
+            "hip_height": 90.27942222954718,
+            "hip_location_estimate_weight": 1.7290754070928256,
+            "image_tracker_feature_vector_threshold": 0.5023914069268558,
+            "image_tracker_feature_vector_update_speed": 0.3,
+            "image_tracker_iou_weight": 1.0,
+            "image_tracker_match_score_threshold": 0.26037746470569934,
+            "image_tracker_max_age": 2.0,
+            "image_tracker_min_hits": 1.0,
+            "image_tracker_min_keypoints": 6.0,
+            "image_tracker_similarity_weight": 2.4786928101774577,
+            "knee_height": 50,
+            "knee_location_estimate_weight": 5,
+            "shoulder_height": 176.7574360435998,
+            "shoulder_location_estimate_weight": 9.814743674213092,
+            "store_map_merge_distance": 212.0,
+            "store_map_tracker_euclid_mode_distance_weight": 1.4417737337932601,
+            "store_map_tracker_euclid_mode_similarity_weight": 3.524438245784668,
+            "store_map_tracker_euclid_threshold": 287.00182293527484,
+            "store_map_tracker_feature_vector_threshold": 0.7035471938631939,
+            "store_map_tracker_feature_vector_update_speed": 0.3446166418943817,
+            "store_map_tracker_match_score_threshold": 0.6618449530204378,
+            "store_map_tracker_max_age": 17.0,
+            "store_map_tracker_min_hits": 0.0,
+            "store_map_tracker_new_track_min_dist": 65.84046626551844
         }
 
         self.trackingFeatureDim = 128
