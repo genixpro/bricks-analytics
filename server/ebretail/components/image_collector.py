@@ -119,7 +119,7 @@ class ImageCollector:
                     except Exception as e:
                         return False
             futures = []
-            for subnet in random.sample(list(range(3)) + [64], 4):
+            for subnet in random.sample([0,1,30,64], 4):
                 for ip in random.sample(range(1, 255), 254):
                     url = 'http://192.168.' + str(subnet) + '.' + str(ip) + ':8080/video/mjpeg?fps=4'
                     id = str(int(str(subnet) + str(ip)))
