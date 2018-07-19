@@ -328,7 +328,7 @@ class StoreCameras extends React.Component {
                     const newState = {storeMapImage: 'data:image/png;base64,' + new Buffer(response.data, 'binary').toString('base64')}; // don't ask why utf8 conversion is needed here, it makes no sense to me either
                     this.setState(newState);
                 });
-            }, 1000);
+            }, 500);
         }
         this.updateCalibrationStoreMapImage__impl();
     }

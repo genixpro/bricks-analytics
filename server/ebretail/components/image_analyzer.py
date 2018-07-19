@@ -295,25 +295,25 @@ class ImageAnalyzer:
         final = np.matmul(scipy.linalg.inv(rotationMatrix),
                           (s * np.matmul(scipy.linalg.inv(cameraMatrix), location) - translationVector))
 
+        final[0][0] *= calibrationReference['unitWidth']
+        final[1][0] *= calibrationReference['unitHeight']
+
         # Now we need to rotate the coordinates based on the direction of the camera
         if calibrationReference['direction'] == 'east':
             x = final[0][0]
             y = final[1][0]
-            final[0][0] = -y
+            final[0][0] = -y + calibrationReference['unitWidth'] * 7
             final[1][0] = x
         elif calibrationReference['direction'] == 'west':
             x = final[0][0]
             y = final[1][0]
             final[0][0] = y
-            final[1][0] = -x
+            final[1][0] = -x + calibrationReference['unitHeight'] * 5
         elif calibrationReference['direction'] == 'south':
             x = final[0][0]
             y = final[1][0]
-            final[0][0] = -x
-            final[1][0] = -y
-
-        final[0][0] *= calibrationReference['unitWidth']
-        final[1][0] *= calibrationReference['unitHeight']
+            final[0][0] = -x + calibrationReference['unitWidth'] * 7
+            final[1][0] = -y + calibrationReference['unitHeight'] * 5
 
         final[0][0] += calibrationReference['x']
         final[1][0] += calibrationReference['y']
