@@ -1,7 +1,7 @@
 dataset_type: coco
 
 global_scale: 1.0
-init_weights: /home/bricks/eb-retail/posemodel/coco-resnet-101
+init_weights: /home/bradley/eb-retail/posemodel/coco-resnet-101
 
 location_refinement: true
 locref_stdev: 7.2801
@@ -19,8 +19,8 @@ sparse_graph: [[0, 1], [0, 2], [1, 2], [2, 4], [1, 3], [0, 4], [0, 3], # head
 scmap_threshold: 0.0
 
 pairwise_predict: true
-pairwise_stats_fn: /home/bricks/eb-retail/posemodel/pairwise/pairwise_stats.mat
-pairwise_model_dir: /home/bricks/eb-retail/posemodel/pairwise/
+pairwise_stats_fn: /home/bradley/eb-retail/posemodel/pairwise/pairwise_stats.mat
+pairwise_model_dir: /home/bradley/eb-retail/posemodel/pairwise/
 
 max_input_size: 850
 pos_dist_thresh: 17

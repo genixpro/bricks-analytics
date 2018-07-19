@@ -133,7 +133,7 @@ class StoreCameras extends React.Component {
         document.getElementById('store-layout').scrollIntoView(true);
         this.setState({
             isSelectingCameraLocation: true,
-            calibrationObjectSize: 100
+            calibrationObjectSize: 134
         });
     }
 
@@ -201,8 +201,8 @@ class StoreCameras extends React.Component {
         camera.calibrationReferencePoint = {
             "x": ((this.state.calibrationObjectX - this.state.calibrationObjectSize/2) / bounds.width) * storeImageElem.naturalWidth,
             "y": ((this.state.calibrationObjectY - this.state.calibrationObjectSize/2) / bounds.height) * storeImageElem.naturalHeight,
-            "unitWidth": (this.state.calibrationObjectSize / bounds.width / 7) * storeImageElem.naturalWidth,
-            "unitHeight": (this.state.calibrationObjectSize / bounds.height / 5) * storeImageElem.naturalHeight
+            "unitWidth": (this.state.calibrationObjectSize  / 7) * (storeImageElem.naturalWidth / bounds.width),
+            "unitHeight": (this.state.calibrationObjectSize / 7) * (storeImageElem.naturalHeight / bounds.height)
         };
 
         let direction = this.state.calibrationObjectRotation;

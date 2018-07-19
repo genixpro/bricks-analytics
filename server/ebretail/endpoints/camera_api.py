@@ -31,6 +31,7 @@ def record(request):
     amqpChannel = request.registry.getMessagingChannel()
     # print(request.matchdict['cameraId'])
     amqpChannel.basic_publish(exchange=request.matchdict['cameraId'], routing_key='', body=json.dumps(message))
+    amqpChannel.close()
 
     return Response(status=200)
 
@@ -82,6 +83,7 @@ class CameraCurrentImage(object):
 
         amqpChannel = self.request.registry.getMessagingChannel()
         amqpChannel.basic_publish(exchange=cameraId, routing_key='', body=json.dumps(message))
+        amqpChannel.close()
 
         return None
 
