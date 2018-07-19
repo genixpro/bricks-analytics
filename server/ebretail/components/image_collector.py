@@ -110,7 +110,7 @@ class ImageCollector:
         return id
     
     def scanNetworkCameras(self):
-        with concurrent.futures.ThreadPoolExecutor(max_workers=128) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1024) as executor:
             networkCameras = []
 
             def testURL(id, url):
@@ -274,18 +274,7 @@ class ImageCollector:
                 (id, url, thread)
             )
             thread.start()
-
-        # Wait until the first images get loaded for each network camera
-        tries = 0
-        def firstImagesLoaded():
-            for camera in self.openedNetworkCameras:
-                if camera[0] not in self.latestImage:
-                    return False
-            return True
-
-        while not firstImagesLoaded() and tries < 100:
-            time.sleep(0.1)
-            tries += 1
+            self.latestImage[id] = numpy.zeros([640,480,3])
 
         self.cameras = self.openedNetworkCameras + self.openedLocalCameras
 
@@ -355,7 +344,7 @@ class ImageCollector:
                         record = True
                         self.recordNextImage[cameraId] = False
 
-                    uploadFutures.append(self.executor.submit(lambda image, id, time, record: self.uploadImageToProcessor(image, id, time, record), numpy.copy(image), cameraId, nextFrameTime, record))
+                    uploadFutures.append(self.executor.submit(lambda image, id, time, record: self.uploadImageToProcessor(image, id, time, record), image.astype('uint8'), cameraId, nextFrameTime, record))
 
                 lastFrameTime = nextFrameTime
             except Exception as e:
@@ -364,6 +353,7 @@ class ImageCollector:
 
     def uploadImageToProcessor(self, image, cameraId, timeStamp, record):
         try:
+            print(cameraId + "  Starting upload " + timeStamp.strftime("%Y-%m-%dT%H:%M:%S.%f"))
             image = Image.fromarray(image, mode=None)
             b = io.BytesIO()
             image.save(b, "JPEG", quality=80)
@@ -406,8 +396,8 @@ class ImageCollector:
         self.networkScanningThread.start()
         self.localScanningThread.start()
         self.amqpThread.start()
-        print("Waiting 30 seconds to find all cameras.")
-        time.sleep(30)
+        print("Waiting 6 seconds to find all cameras.")
+        time.sleep(6)
 
         self.synchronizeLocalCameras()
         self.synchronizeNetworkCameras()
@@ -495,17 +485,6 @@ class ImageCollector:
             x_offset += cameraImage.size[0]
 
         array = numpy.array(newImage.convert("RGB"))
-        for x in range(maxWidth):
-            for y in range(maxHeight):
-                pixel = array[y][x]
-
-                r = pixel[2]
-                g = pixel[1]
-                b = pixel[0]
-
-                pixel[0] = r
-                pixel[1] = g
-                pixel[2] = b
-
+        array = cv2.cvtColor(array, cv2.COLOR_BGR2RGB)
 
         imageio.imsave('image-' + str(frameName) + '.jpg', array)
