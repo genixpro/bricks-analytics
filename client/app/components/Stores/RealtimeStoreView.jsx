@@ -125,6 +125,14 @@ class RealtimeStoreView extends React.Component {
                                         person.detectionIds.map((cameraId) => (<span>{cameraId}</span>))
                                     }
                                     <br/>
+                                    {
+                                        person.detectionIds ?
+                                            person.detectionIds.map((detectionId) =>
+                                            {
+                                                return <img className='detection-image' src={'http://localhost:1806/store/' + this.props.match.params.storeId + "/detections/" + detectionId + "/image"} />;
+                                            })
+                                            : null
+                                    }
                                     <p>Zone: {person.zone}</p>
                                 </Popover>
                                 : null
