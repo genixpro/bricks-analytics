@@ -115,3 +115,4 @@ class TimeSeriesAnalyzer:
         exchangeId = 'store-time-series-frames-' + str(timeSeriesFrame['storeId'])
         amqpChannel.exchange_declare(exchange=exchangeId, exchange_type='fanout')
         amqpChannel.basic_publish(exchange=exchangeId, routing_key='', body=bson.json_util.dumps(timeSeriesFrame))
+        amqpChannel.close()

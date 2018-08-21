@@ -168,9 +168,9 @@ class CaptureTest:
                     "y": (self.annotations["frames"]["0"][0]["y1"] * self.annotationHeightAdjust -
                           self.testData['storeMap']['y']),
                     "unitWidth": abs(
-                        self.annotations["frames"]["0"][0]["x2"] - self.annotations["frames"]["0"][0]["x1"]) / 4,
+                        self.annotations["frames"]["0"][0]["x2"] - self.annotations["frames"]["0"][0]["x1"]) / 5,
                     "unitHeight": abs(
-                        self.annotations["frames"]["0"][0]["y2"] - self.annotations["frames"]["0"][0]["y1"]) / 4,
+                        self.annotations["frames"]["0"][0]["y2"] - self.annotations["frames"]["0"][0]["y1"]) / 5,
                     "direction": camera['direction']
                 },
                 "cameraMatrix": calibrationObject["cameraMatrix"],
